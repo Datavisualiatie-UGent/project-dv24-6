@@ -10,10 +10,12 @@
   },
   "dependencies": {
     "@observablehq/framework": "latest",
-    "d3-dsv": "^3.0.1",
-    "d3-time-format": "^4.1.0"
+    "chart.js": "^4.4.2",
+    "chartjs-chart-wordcloud": "^4.4.0",
+    "d3-cloud": "^1.2.7"
   },
   "devDependencies": {
+    "@types/d3-cloud": "^1.2.9",
     "rimraf": "^5.0.5"
   },
   "engines": {

@@ -183,3 +183,11 @@ let legend = Swatches(color)
 <h2>Most successful directors per movie genre</h2>
 <div>${legend}</div>
 <div>${treemap}</div>
+
+```js
+
+```
+
+
+<br>
+<h2>Average Movie score per Actor</h2>

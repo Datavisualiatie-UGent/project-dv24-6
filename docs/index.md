@@ -183,3 +183,37 @@ let legend = Swatches(color)
 <h2>Most successful directors per movie genre</h2>
 <div>${legend}</div>
 <div>${treemap}</div>
+<br>
+<h2>Average gross income per year and per genre</h2>
+
+<div id="line-plot"></div>
+
+```js
+import * as Plot from "npm:@observablehq/plot";
+let groupData = d3.group(movies, d => d.Year, d => d.main_genre)
+let finishedFilter = []
+groupData.forEach((values, year) => {
+    let result = []
+    values.forEach((values, genre) => {
+        let total = 0
+        let temp = 0.0
+        values.forEach(d => {
+            if (d.Total_Gross !== "Gross Unkown") {
+                total += 1
+                temp += parseFloat(d.Total_Gross.match(/[0-9.]+/))
+            }
+        })
+        result.push({genre: genre, average_gross: temp != 0.0 ? (temp / total).toFixed(2) : 0.0})
+    })
+    finishedFilter.push({year: year, average_gross_genre: result})
+})
+
+d3.sort(finishedFilter, d => -d.year).forEach(data => {
+    console.log(data)
+    const title = document.createElement("h2");
+    const node = document.createTextNode(data.year);
+    title.append(node)
+    document.getElementById("line-plot").appendChild(title)
+    Plot.line(data.average_gross_genre, {x: "genre", y: "average_gross"}).plot({y: {grid: true}})
+})
+```

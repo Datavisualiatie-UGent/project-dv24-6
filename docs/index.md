@@ -451,3 +451,11 @@ function transissionToOtherData(filteredData) {
     });
 }
 ```
+<br>
+<h2>Average box-office per rating</h2>
+
+```js
+display(movies)
+let groupedData = d3.group(movies, d => d.Censor);
+display(groupedData);
+```

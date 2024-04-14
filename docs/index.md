@@ -1,5 +1,6 @@
 ---
 toc: false
+theme: default
 ---
 
 # IMDB Top 5000 Movies
@@ -177,6 +178,8 @@ smallLeaf.append("text")
 
 Object.assign(treemap.node(), {scales: {color}});
 let legend = Swatches(color)
+
+const displayingActor = true;
 ```
 
 <br>
@@ -185,18 +188,33 @@ let legend = Swatches(color)
 <div>${treemap}</div>
 
 <br>
-<h2>Average Movie score per Actor</h2>
+<div style="position: relative; display: flex; flex-direction: row;">
+    <h2>Average Movie score per</h2>
+    <button id="actorButton" style="margin-left: 5px;
+                   margin-right: 3px; 
+                   font-size: larger; 
+                   font-family: Volkhov;
+                   border-radius: 7px;
+                   background-color: #437c90">Actor</button>
+    <button id="directorButton" style="margin-left: 5px;
+                   margin-right: 3px; 
+                   font-size: larger; 
+                   font-family: Volkhov;
+                   border-radius: 7px;
+                   background-color: #437c90">Director</button>
+</div>
+
 <div id="my_dataviz" style="position: relative; display: flex; flex-direction: column">
-<label for="artist">Search Artist:</label>
-<input type="text" id="artist" style="border-radius: 10px; padding: 7px">
+    <label for="artist">Search Artist:</label>
+    <input type="text" id="artist" style="border-radius: 10px; padding: 7px">
 </div>
 
 ```js
 import * as Plot from "npm:@observablehq/plot";
+
 var actorScores = {};
 var actorMoviesCount = {};
 let groupData = d3.group(movies, d => d.Actors)
-display(movies)
 
 groupData.forEach((movies, actor) => {
     const actors = actor.split(',');
@@ -213,20 +231,57 @@ groupData.forEach((movies, actor) => {
     }
 });
 
-const data = [];
+const actordata = [];
 for (const actor in actorScores) {
-    data.push({"actor": actor, "mean_score": d3.mean(actorScores[actor]), "movies_count": actorMoviesCount[actor]});
+    actordata.push({
+        "artist": actor,
+        "mean_score": d3.mean(actorScores[actor]),
+        "movies_count": actorMoviesCount[actor]
+    });
 }
-display(data)
 ```
 
 ```js
+var directorScores = {};
+var directorMoviesCount = {};
+let groupData = d3.group(movies, d => d.Director)
+
+groupData.forEach((movies, director) => {
+    if (director.startsWith('Directors:')) director = director.split('Directors:')[1];
+    const directors = director.split(',');
+    for (let i = 0; i < directors.length; i++) {
+        directors[i] = directors[i].trim();
+        if (directorScores[directors[i]] === undefined) {
+            directorScores[directors[i]] = [];
+            directorMoviesCount[directors[i]] = 0;
+        }
+        for (let j = 0; j < movies.length; j++) {
+            directorScores[directors[i]].push(parseFloat(movies[j].Rating));
+            directorMoviesCount[directors[i]]++;
+        }
+    }
+});
+
+const directordata = [];
+for (const director in directorScores) {
+    directordata.push({
+        "artist": director,
+        "mean_score": d3.mean(directorScores[director]),
+        "movies_count": directorMoviesCount[director]
+    });
+}
+
+```
+
+```js
+let actorSelected = true;
 const width = 900;
 const height = 800;
 const staticColor = '#437c90';
 const hoverColor = '#eec42d';
 const padding = {top: 20, left: 30, right: 40, bottom: 20};
 
+// Add the tooltip
 const tooltip = d3.select("#my_dataviz")
     .append('div')
     .attr('class', 'd3-tooltip')
@@ -241,88 +296,44 @@ const tooltip = d3.select("#my_dataviz")
     .style('top', "0px")
     .text('a simple tooltip');
 
+// Create the SVG for scatter plot
 const graph = d3.select("#my_dataviz")
     .append("svg")
       .attr("viewBox", [0, 0, width, height])
       .attr("width", width)
       .attr("height", height)
       .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif; position: relative")
-    
+ 
+// Add the search bar to filter the data
 const search = d3.select("#artist")
     .on("input", function() {
         const value = this.value;
-        console.log(value)
-        let filteredData = data.filter(d => d.actor.toLowerCase().includes(value.toLowerCase()));
+        let data = actordata
+        if (!actorSelected) {
+            data = directordata;
+        }
+        let filteredData = data.filter(d => d.artist.toLowerCase().includes(value.toLowerCase()));
         if (value === "") {
             filteredData = data;
         }
-        console.log(filteredData)
-        const xScale = d3.scaleLinear()
-            .domain([0, d3.max(filteredData, d => d.movies_count)])
-            .range([padding.left, width - padding.right]);
-        const yScale = d3.scaleLinear()
-            .domain([0, 10])
-            .range([height - padding.bottom, padding.top]);
-        const xAxis = d3.axisBottom()
-            .scale(xScale);
-        const yAxis = d3.axisLeft()
-            .scale(yScale);
-        
-        let circles = graph.selectAll("circle").data(filteredData);
-        // Update existing circles
-        circles
-            .transition()
-            .attr("cx", d => xScale(d.movies_count))
-            .attr("cy", d => yScale(d.mean_score));
-        
-        // Handle enter selection
-        circles.enter()
-            .append("circle")
-            .attr("cx", d => xScale(d.movies_count))
-            .attr("cy", d => yScale(d.mean_score))
-            .attr("r", 2)
-            .attr("fill", "hotpink") // Set initial fill for newly appended circles
-            .transition()
-            .attr("r", 5)
-            .attr("fill", staticColor)
-        
-        circles.exit()
-            .transition()
-            .attr("r", 0)
-            .remove();
-        
-        graph.select(".x.axis")
-            .transition()
-            .call(xAxis);
-        graph.select(".y.axis")
-            .transition()
-            .call(yAxis);
-        
-        circles = graph.selectAll("circle"); // Re-select all circles after updating
-        circles.on('mouseover', function (d, i) {
-            tooltip
-                .html(
-                    `<h1>${i.actor}</h1>
-                    <div>Amount of movies: ${i.movies_count}</div>
-                    <div>Average movie score: ${i.mean_score.toFixed(2)}</div>`
-                )
-                .style('visibility', 'visible');
-            d3.select(this).transition().attr('fill', hoverColor).attr("r", 6);
-        })
-        .on('mousemove', function (evt, d) {
-            const [mx, my] = d3.pointer(evt);
-            tooltip
-                .style("left", (mx + 10) + "px")
-                .style("top", (my + 10) + "px")
-        })
-        .on('mouseout', function () {
-            tooltip.html(``).style('visibility', 'hidden');
-            d3.select(this).transition().attr('fill', staticColor).attr("r", 4);
-        });
+        transissionToOtherData(filteredData);
+    });
+
+// Add the buttons to switch between actor and director
+d3.select("#actorButton")
+    .on("click", function() {
+        actorSelected = true;
+        transissionToOtherData(actordata);
+    });
+
+d3.select("#directorButton")
+    .on("click", function() {
+        actorSelected = false;
+        transissionToOtherData(directordata);
     });
 
 const xScale = d3.scaleLinear()
-                .domain([0, d3.max(data, d => d.movies_count)])
+                .domain([0, d3.max(actordata, d => d.movies_count)])
                 .range([padding.left, width - padding.right]);
 
 const yScale = d3.scaleLinear()
@@ -336,7 +347,7 @@ const yAxis = d3.axisLeft()
                 .scale(yScale);
 
 graph.selectAll("circle")
-.data(data)
+.data(actordata)
 .enter()
 .append("circle")
 .attr("cx", d => xScale(d.movies_count))
@@ -346,7 +357,7 @@ graph.selectAll("circle")
 .on('mouseover', function (d, i) {
           tooltip
             .html(
-              `<h1>${i.actor}</h1>
+              `<h1>${i.artist}</h1>
               <div>Amount of movies: ${i.movies_count}</div>
               <div>Average movie score: ${i.mean_score.toFixed(2)}</div>`
             )
@@ -374,44 +385,69 @@ graph.append("g")
 .attr("transform", `translate(${padding.left}, 0)`)
 .call(yAxis);
 
-function updateData() {
-    data.push(...data.splice(0, 2));
-    data.shift();
+
+function transissionToOtherData(filteredData) {
+    const xScale = d3.scaleLinear()
+        .domain([0, d3.max(filteredData, d => d.movies_count)])
+        .range([padding.left, width - padding.right]);
+    const yScale = d3.scaleLinear()
+        .domain([0, 10])
+        .range([height - padding.bottom, padding.top]);
+    const xAxis = d3.axisBottom()
+        .scale(xScale);
+    const yAxis = d3.axisLeft()
+        .scale(yScale);
     
-    xScale.domain([0, d3.max(data, d => d[0])]);
-    yScale.domain([0, d3.max(data, d => d[1])]);
+    let circles = graph.selectAll("circle").data(filteredData);
+    // Update existing circles
+    circles
+        .transition()
+        .attr("cx", d => xScale(d.movies_count))
+        .attr("cy", d => yScale(d.mean_score));
     
-    let circles = graph.selectAll("circle").data(data);
+    // Handle enter selection
+    circles.enter()
+        .append("circle")
+        .attr("cx", d => xScale(d.movies_count))
+        .attr("cy", d => yScale(d.mean_score))
+        .attr("r", 2)
+        .attr("fill", "hotpink") // Set initial fill for newly appended circles
+        .transition()
+        .attr("r", 5)
+        .attr("fill", staticColor)
     
-    circles.enter()                      
-      .append("circle")
-      .attr("cx", d => xScale(0))     // position the new data points in the origin
-      .attr("cy", d => yScale(0))
-      .attr("r", 2)
-    .merge(circles)                   // merge the existing circles with the new ones
-      .transition()                   // and transition everything to their new position
-      .on("start", function () {
-        d3.select(this)
-          .attr("fill", "hotpink")
-          .attr("r", 5);
-      })
-      .attr("cx", d => xScale(d[0]))
-      .attr("cy", d => yScale(d[1]))
-      .on("end", function () {
-        d3.select(this)
-          .attr("fill", "black")
-          .attr("r", 2);
-      });
+    circles.exit()
+        .transition()
+        .attr("r", 0)
+        .remove();
     
     graph.select(".x.axis")
-      .transition()
-      .call(xAxis);
-    
+        .transition()
+        .call(xAxis);
     graph.select(".y.axis")
-      .transition()
-      .call(yAxis);
+        .transition()
+        .call(yAxis);
+    
+    circles = graph.selectAll("circle"); // Re-select all circles after updating
+    circles.on('mouseover', function (d, i) {
+        tooltip
+            .html(
+                `<h1>${i.artist}</h1>
+                <div>Amount of movies: ${i.movies_count}</div>
+                <div>Average movie score: ${i.mean_score.toFixed(2)}</div>`
+            )
+            .style('visibility', 'visible');
+        d3.select(this).transition().attr('fill', hoverColor).attr("r", 6);
+    })
+    .on('mousemove', function (evt, d) {
+        const [mx, my] = d3.pointer(evt);
+        tooltip
+            .style("left", (mx + 10) + "px")
+            .style("top", (my + 10) + "px")
+    })
+    .on('mouseout', function () {
+        tooltip.html(``).style('visibility', 'hidden');
+        d3.select(this).transition().attr('fill', staticColor).attr("r", 4);
+    });
 }
-
-  
-//display(graph.node())
 ```

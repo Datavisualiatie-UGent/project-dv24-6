@@ -184,12 +184,12 @@ let legend = Swatches(color)
 <div>${legend}</div>
 <div>${treemap}</div>
 <br>
-<h2>Average gross income per year and per genre</h2>
 
+<h2>Average gross income per year and per genre</h2>
+<select id="yearSelect"></select>
 <div id="line-plot"></div>
 
 ```js
-import * as Plot from "npm:@observablehq/plot";
 let groupData = d3.group(movies, d => d.Year, d => d.main_genre)
 let finishedFilter = []
 groupData.forEach((values, year) => {
@@ -207,13 +207,88 @@ groupData.forEach((values, year) => {
     })
     finishedFilter.push({year: year, average_gross_genre: result})
 })
+let sorted = d3.sort(finishedFilter, d => -d.year).filter(d => d.average_gross_genre.filter(t => t.average_gross != 0).length != 0)
 
-d3.sort(finishedFilter, d => -d.year).forEach(data => {
-    console.log(data)
-    const title = document.createElement("h2");
-    const node = document.createTextNode(data.year);
-    title.append(node)
-    document.getElementById("line-plot").appendChild(title)
-    Plot.line(data.average_gross_genre, {x: "genre", y: "average_gross"}).plot({y: {grid: true}})
-})
+const margin = { top: 20, right: 20, bottom: 50, left: 50 };
+const width = 600 - margin.left - margin.right;
+const height = 400 - margin.top - margin.bottom;
+
+const genres = ['Action', 'Biography', 'Animation','Adventure','Crime','Comedy','Drama', 'Mystery', 'Horror', 'Fantasy'].sort()
+
+const select = d3.select("#yearSelect");
+select.selectAll("option")
+  .data(sorted)
+  .enter().append("option")
+  .text(d => d.year);
+
+function updateChart(data) {
+    const yearData = data.average_gross_genre
+    
+    d3.select("#line-plot").selectAll("*").remove();
+    
+    d3.select("#line-plot").append("h3")
+        .attr("x", (width / 2))
+        .attr("y", 0 - (margin.top / 2))
+        .attr("text-anchor", "middle")
+        .style("font-size", "16px")
+        .style("fill", "#F0F8FF")
+        .text("Average gross income by Genre in the year " + data.year);
+
+    const svg = d3.select("#line-plot").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+     const x = d3.scaleBand()
+        .domain(genres)
+        .range([0, width])
+        .padding(0.1);
+     
+    let max = d3.max(yearData.map(d => parseInt(d.average_gross)))
+    
+     const y = d3.scaleLinear()
+        .domain([0, max + 0.1 * max])
+        .range([height, 0]);
+     
+     svg.selectAll(".bar")
+        .data(yearData)
+        .enter().append("rect")
+        .attr("class", "bar")
+        .attr("x", d => x(d.genre))
+        .attr("width", x.bandwidth())
+        .attr("y", d => y(d.average_gross))
+        .attr("height", d => height - y(d.average_gross))
+         .style("fill", "#69b3a2")
+    
+     svg.selectAll(".income-text")
+    .data(yearData)
+    .enter().append("text")
+    .attr("class", "income-text")
+    .attr("x", d => x(d.genre) + x.bandwidth() / 2)
+    .attr("y", d => y(d.average_gross) - 5) // Adjust position to be slightly above the bar
+    .attr("text-anchor", "middle")
+    .text(d => `${d.average_gross}$`)
+    .style("font-size", "12px")
+    .style("fill", "white");
+    
+     // Draw x axis
+     svg.append("g")
+        .attr("class", "x-axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(d3.axisBottom(x));
+
+     // Draw y axis
+    svg.append("g")
+        .attr("class", "y-axis")
+        .call(d3.axisLeft(y));
+}
+
+updateChart(sorted[Object.keys(sorted)[0]]);
+
+// Event listener for select box
+select.on("change", function() {
+  const selectedYear = this.value;
+  updateChart(sorted.filter(d => d.year == selectedYear)[0]);
+});
 ```

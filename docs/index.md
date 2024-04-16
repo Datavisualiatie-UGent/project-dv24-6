@@ -453,9 +453,98 @@ function transissionToOtherData(filteredData) {
 ```
 <br>
 <h2>Average box-office per rating</h2>
+For censor ratings "12" and "18+" the box-office is unknown. The box-office is in million dollars.
+<div id="averageBoxOffice"></div>
 
 ```js
-display(movies)
-let groupedData = d3.group(movies, d => d.Censor);
-display(groupedData);
+var censorBoxOffice = {};
+let groupedDataByCensor = d3.group(movies, d => d.Censor);
+
+groupedDataByCensor.forEach((movies, censor) => {
+    censorBoxOffice[censor] = [];
+    for (let j = 0; j < movies.length; j++) {
+        if (movies[j].Total_Gross !== 'Gross Unkown') {
+            censorBoxOffice[censor].push(parseFloat(movies[j].Total_Gross.match(/[0-9.]+/)));
+        }
+    }
+});
+
+const combinedArray = censorBoxOffice['Not Rated'].concat(censorBoxOffice['Unrated']);
+const average = d3.mean(combinedArray);
+censorBoxOffice['Not Rated'] = [];
+censorBoxOffice['Not Rated'].push(average);
+
+const order = ['Not Rated', '(Banned)', 'All', 'U', 'G', 'U/A', 'PG', 'PG-13', '7', 'UA 7+', 'UA', '12+', '13', 'UA 13+', '15+', '16', 'UA 16+', 'R', 'NC-17', '18', 'M/PG', 'A']
+const boxOfficeData = [];
+for (const censor of order) {
+    console.log(censor)
+    if (censor !== 'Unrated' && censor !== '12' && censor !== '18+') {
+        boxOfficeData.push({
+            "Censor": censor,
+            "Value": d3.mean(censorBoxOffice[censor])
+        });
+    }
+}
+
+```
+
+```js
+// set the dimensions and margins of the graph
+var margin = {top: 30, right: 30, bottom: 70, left: 60};
+const width = 900;
+const height = 800;
+
+// append the svg object to the body of the page
+var svg = d3.select("#averageBoxOffice")
+  .append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform",
+          "translate(" + margin.left + "," + margin.top + ")");
+
+
+// X axis
+var x = d3.scaleLinear()
+    .domain([0, 300])
+    .range([ 0, width ]);
+    
+svg.append("g")
+  .attr("transform", "translate(0," + height + ")")
+  .call(d3.axisBottom(x))
+  .selectAll("text")
+    .attr("transform", "translate(-10,0)rotate(-45)")
+    .style("text-anchor", "end");
+
+// Add Y axis
+var y = d3.scaleBand()
+    .domain(boxOfficeData.map(function(d) { return d.Censor; }))
+    .range([ height, 0])
+    .padding(0.2);
+svg.append("g")
+  .call(d3.axisLeft(y));
+
+// Bars
+let bars = svg.selectAll("mybar")
+    .data(boxOfficeData)
+    .enter()
+    .append("g")
+    
+bars.append("rect")
+    .attr("class", "bar")
+    .attr("x", x(0))
+    .attr("y", function(d) { return y(d.Censor); } )
+    .attr("width", function(d) { return x(d.Value); })
+    .attr("height",function(d) { return y.bandwidth(); } )
+    .attr("fill", "#F5C518");
+
+bars.append("text")
+    .attr("class", "label")
+    .attr("x", function(d) { return x(d.Value) + 35; })
+    .attr("y", function(d) { return y(d.Censor) + y.bandwidth() * (0.5 + 0.1); }) // Adjust position to be slightly above the bar
+    .attr("text-anchor", "middle")
+    .text(function(d) { return `$${d.Value.toFixed(2)}M`; })
+    .style("font-size", "12px")
+    .style("fill", "white")
+    .style("font-weight", "bold");
 ```

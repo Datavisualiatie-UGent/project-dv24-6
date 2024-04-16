@@ -556,7 +556,7 @@ function updateChart(data) {
         .attr("x", d => x(d.genre) + x.bandwidth() / 2)
         .attr("y", d => y(d.average_gross) - 5) // Adjust position to be slightly above the bar
         .attr("text-anchor", "middle")
-        .text(d => `${d.average_gross}$`)
+        .text(d => `$${d.average_gross}M`)
         .style("font-size", "12px")
         .style("fill", "white");
 

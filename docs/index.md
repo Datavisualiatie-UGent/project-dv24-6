@@ -451,8 +451,7 @@ function transissionToOtherData(filteredData) {
     });
 }
 ```
-
-
+<br>
 <h2>Average gross income per year and per genre</h2>
 <select id="yearSelect"></select>
 <div id="line-plot"></div>

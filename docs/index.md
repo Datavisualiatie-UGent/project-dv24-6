@@ -279,7 +279,7 @@ const width = 900;
 const height = 800;
 const staticColor = '#437c90';
 const hoverColor = '#eec42d';
-const padding = {top: 20, left: 30, right: 40, bottom: 20};
+const padding = {top: 20, left: 30, right: 40, bottom: 30};
 
 // Add the tooltip
 const tooltip = d3.select("#my_dataviz")
@@ -299,7 +299,7 @@ const tooltip = d3.select("#my_dataviz")
 // Create the SVG for scatter plot
 const graph = d3.select("#my_dataviz")
     .append("svg")
-      .attr("viewBox", [0, 0, width, height])
+      .attr("viewBox", [0, 0, width, height + padding.bottom])
       .attr("width", width)
       .attr("height", height)
       .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif; position: relative")
@@ -384,6 +384,26 @@ graph.append("g")
 .attr("class", "y axis")
 .attr("transform", `translate(${padding.left}, 0)`)
 .call(yAxis);
+
+graph.append("text")
+    .attr("class", "x label")
+    .attr("text-anchor", "middle")
+    .attr("x", width / 2)
+    .attr("y", height + 20)
+    .style("font-size", "20px")
+    .style("fill", "white")
+    .text("Number of Movies");
+
+graph.append("text")
+    .attr("class", "y label")
+    .attr("text-anchor", "middle")
+    .attr("x", -height / 2)
+    .attr("y", -15)
+    .attr("dy", ".75em")
+    .attr("transform", "rotate(-90)")
+    .style("font-size", "20px")
+    .style("fill", "white")
+    .text("Average Movie Score");
 
 
 function transissionToOtherData(filteredData) {
@@ -506,7 +526,7 @@ var svg = d3.select("#averageBoxOffice")
 
 // X axis
 var x = d3.scaleLinear()
-    .domain([0, 300])
+    .domain([0, 250])
     .range([ 0, width ]);
     
 svg.append("g")
@@ -515,6 +535,15 @@ svg.append("g")
   .selectAll("text")
     .attr("transform", "translate(-10,0)rotate(-45)")
     .style("text-anchor", "end");
+
+svg.append("text")
+    .attr("class", "x label")
+    .attr("text-anchor", "end")
+    .attr("x", 600)
+    .attr("y", height + 55)
+    .text("Average box-office (in million dollars)")
+    .style("font-size", "20px")
+    .style("fill", "white");
 
 // Add Y axis
 var y = d3.scaleBand()

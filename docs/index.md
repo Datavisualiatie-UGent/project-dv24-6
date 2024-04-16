@@ -479,11 +479,11 @@ let sorted = d3.sort(finishedFilter, d => -d.year).filter(d => d.average_gross_g
 
 // Graph marges
 const margin = {top: 20, right: 20, bottom: 50, left: 50};
-const width = 600 - margin.left - margin.right;
+const width = 800 - margin.left - margin.right;
 const height = 400 - margin.top - margin.bottom;
 
 // Genres list
-const genres = ['Action', 'Biography', 'Animation', 'Adventure', 'Crime', 'Comedy', 'Drama', 'Mystery', 'Horror', 'Fantasy'].sort()
+const genres = ['Action', 'Biography', 'Film-Noir', 'Western', 'Musical', 'Animation', 'Adventure', 'Crime', 'Comedy', 'Drama', 'Mystery', 'Horror', 'Fantasy'].sort()
 
 // Creat selection for year
 const select = d3.select("#yearSelect");
@@ -498,9 +498,7 @@ function updateChart(data) {
 
     // Add missing data for graph
     for (let temp of genres) {
-        console.log(temp)
         if (yearData.filter(d => d.genre == temp).length == 0) {
-            console.log(temp)
             yearData.push({genre: temp, average_gross: 0.0})
         }
     }
@@ -534,7 +532,7 @@ function updateChart(data) {
     let max = d3.max(yearData.map(d => parseInt(d.average_gross)))
 
     const y = d3.scaleLinear()
-        .domain([0, max + 0.1 * max])
+        .domain([0, max + 10])
         .range([height, 0]);
 
     // Add bars

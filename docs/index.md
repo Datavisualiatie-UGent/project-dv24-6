@@ -5,6 +5,12 @@ theme: default
 
 # IMDB Top 5000 Movies
 
+Every big movie studio wants to make a great movie that creates a lot of revenue, but where to start. There are a lot
+of options to choose from. Which genre creates the most money. Which actor attracts people to the cinema.
+DWe did a study on the dataset of IMDB's Top 5000 movies to create a clear conclusion. We hope this helps your studio
+for making a good and profitable movie.
+
+
 ```js
 function Swatches(color, {
   columns = null,

@@ -12,6 +12,256 @@ for making a good and profitable movie.
 
 
 ```js
+const movies = FileAttachment("movies.csv").csv({typed: true});
+```
+
+<br>
+<div style="position: relative; display: flex; flex-direction: row;">
+    <h2>Gross income vs score</h2>
+</div>
+<div id="incomescore" style="position: relative; display: flex; flex-direction: column">
+    <label for="name">Search Movie:</label>
+    <input type="text" id="name" style="border-radius: 10px; padding: 7px">
+</div>
+
+
+
+```js
+import * as Plot from "npm:@observablehq/plot";
+
+var movieScores = {};
+var movieIncome = {};
+
+movies.forEach(movie => {
+    let movieName = movie.Movie_Title;
+    let gross = movie.Total_Gross.trim();
+    if (gross !== "Gross Unkown") {
+        movieIncome[movieName] = parseFloat(gross.substring(1, gross.length - 1));
+        let score = movie.Rating;   
+        movieScores[movieName] = parseFloat(score);
+    }
+});
+
+const moviedata = [];
+        console.log(movieScores);
+for (const movie in movieScores) {
+
+    moviedata.push({
+        "movie": movie,
+        "score": movieScores[movie],
+        "income": movieIncome[movie]
+    });
+}
+```
+
+
+```js
+const width = 900;
+const height = 800;
+const staticColor = '#437c90';
+const hoverColor = '#eec42d';
+const padding = {top: 20, left: 30, right: 40, bottom: 30};
+let prevXScale = [d3.scaleLinear()
+        .domain([0, d3.max(moviedata, d => d.income)])
+        .range([padding.left, width - padding.right])];
+
+// Add the tooltip
+const tooltip = d3.select("#incomescore")
+    .append('div')
+    .attr('class', 'd3-tooltip')
+    .style('position', 'absolute')
+    .style('z-index', '10')
+    .style('visibility', 'hidden')
+    .style('padding', '10px')
+    .style('background', 'rgba(0,0,0,0.6)')
+    .style('border-radius', '4px')
+    .style('color', '#fff')
+    .style('left', "0px")
+    .style('top', "0px")
+    .text('a simple tooltip');
+
+
+
+// Create the SVG for scatter plot
+const graph = d3.select("#incomescore")
+    .append("svg")
+      .attr("viewBox", [0, 0, width, height + padding.bottom])
+      .attr("width", width)
+      .attr("height", height)
+      .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif; position: relative")
+const search = d3.select("#name")
+    .on("input", function() {
+        const value = this.value;
+        console.log(value);
+        let filteredData = moviedata.filter(d => d.movie.toLowerCase().includes(value.toLowerCase()));
+        if (value === "") {
+            filteredData = moviedata;
+        }
+        transissionToSelectMovies(filteredData);
+    });
+
+
+const xScale = d3.scaleLinear()
+                .domain([0, d3.max(moviedata, d => d.income)])
+                .range([padding.left, width - padding.right]);
+
+const yScale = d3.scaleLinear()
+                .domain([0, 10])
+                .range([height - padding.bottom, padding.top]);
+
+const xAxis = d3.axisBottom()
+                .scale(xScale);
+
+const yAxis = d3.axisLeft()
+                .scale(yScale);
+
+
+function createStarPath(x, y, starScale) {
+    // Define the coordinates of the star based on the scale factor
+    const scale = starScale * 10; // Base size of the star (adjust as needed)
+    const halfScale = scale / 2;
+    
+    // Calculate the coordinates of the star points
+    const starPath = `
+        M${x},${y - scale-scale}
+        L${x + halfScale},${y + halfScale-scale}
+        L${x + scale * 1.5},${y + scale * 0.7-scale}
+        L${x + scale * 0.7},${y + scale * 1.5-scale}
+        L${x + scale},${y + scale * 2.5-scale}
+        L${x},${y + scale * 2-scale}
+        L${x - scale},${y + scale * 2.5-scale}
+        L${x - scale * 0.7},${y + scale * 1.5-scale}
+        L${x - scale * 1.5},${y + scale * 0.7-scale}
+        L${x - halfScale},${y + halfScale-scale}
+        Z`;
+
+    return starPath;
+}
+graph.selectAll("path")
+.data(moviedata)
+.enter()
+.append("path")
+.attr("d", d => createStarPath(xScale(d.income), yScale(d.score), 0.5))
+.attr("fill", hoverColor)
+.on('mouseover', function (d, i) {
+          tooltip
+            .html(
+              `<h1>${i.movie}</h1>
+              <div>Score of movie: ${i.score}</div>
+              <div>Income of movie: ${"$" + i.income + "M"}</div>`
+            )
+            .style('visibility', 'visible');
+          d3.select(this).transition().attr('fill', staticColor)
+              .attr("d", d => createStarPath(xScale(d.income), yScale(d.score),0.6))
+;
+      })
+    .on('mousemove', function (evt, d) {
+        const [mx, my] = d3.pointer(evt);
+        tooltip
+            .style("left", (mx + 20) + "px")
+            .style("top", (my + 10) + "px")
+    })
+.on('mouseout', function () {
+  tooltip.html(``).style('visibility', 'hidden');
+  d3.select(this).transition().attr('fill', hoverColor)
+     .attr("d", d => createStarPath(xScale(d.income), yScale(d.score),0.5));
+});
+
+graph.append("g") 
+.attr("class", "x axis")
+.attr("transform", `translate(0, ${height - padding.bottom})`)
+.call(xAxis);
+
+graph.append("g") 
+.attr("class", "y axis")
+.attr("transform", `translate(${padding.left}, 0)`)
+.call(yAxis);
+
+graph.append("text")
+    .attr("class", "x label")
+    .attr("text-anchor", "middle")
+    .attr("x", width / 2)
+    .attr("y", height + 20)
+    .style("font-size", "20px")
+    .style("fill", "white")
+    .text("Gross income of the movie (in million dollars)");
+
+graph.append("text")
+    .attr("class", "y label")
+    .attr("text-anchor", "middle")
+    .attr("x", -height / 2)
+    .attr("y", -15)
+    .attr("dy", ".75em")
+    .attr("transform", "rotate(-90)")
+    .style("font-size", "20px")
+    .style("fill", "white")
+    .text("Movie Score");
+
+function transissionToSelectMovies(filteredData) {
+
+    const xScale = d3.scaleLinear()
+        .domain([0, d3.max(filteredData, d => d.income)])
+        .range([padding.left, width - padding.right]);
+    const yScale = d3.scaleLinear()
+        .domain([0, 10])
+        .range([height - padding.bottom, padding.top]);
+    const xAxis = d3.axisBottom()
+        .scale(xScale);
+    const yAxis = d3.axisLeft()
+        .scale(yScale);
+
+    let path = graph.selectAll("path").data(filteredData);
+    // Update existing circles
+    path
+        .transition()
+        .attr("d", d => createStarPath(xScale(d.income), yScale(d.score),0.5))
+    path.enter()
+        .append("path")
+        .attr("d", d => createStarPath(xScale(d.income), yScale(d.score),0.3))
+        .attr("fill", "hotpink") // Set initial fill for newly appended circles
+        .transition()
+        .attr("d", d => createStarPath(xScale(d.income), yScale(d.score),0.5))
+        .attr("fill", hoverColor)
+
+        path.exit()
+            .transition()
+                  .attr("d",d=>d===null?d:createStarPath(prevXScale[0](d.income),yScale(d.score),0.1))
+                  
+            .remove();
+    prevXScale[0]=xScale;
+    graph.select(".x.axis")
+        .transition()
+        .call(xAxis);
+    graph.select(".y.axis")
+        .transition()
+        .call(yAxis);
+    
+    path = graph.selectAll("path"); // Re-select all circles after updating
+    path.on('mouseover', function (d, i) {
+        tooltip
+            .html(
+              `<h1>${i.movie}</h1>
+              <div>Score of movie: ${i.score}</div>
+              <div>Income of movie: ${"$" + i.income + "M"}</div>`
+            )
+            .style('visibility', 'visible');
+        d3.select(this).transition().attr('fill', staticColor).attr("d", d => createStarPath(xScale(d.income), yScale(d.score),0.6))
+    })
+    .on('mousemove', function (evt, d) {
+        const [mx, my] = d3.pointer(evt);
+        tooltip
+            .style("left", (mx + 20) + "px")
+            .style("top", (my + 10) + "px")
+    })
+    .on('mouseout', function () {
+        tooltip.html(``).style('visibility', 'hidden');
+        d3.select(this).transition().attr('fill', hoverColor).attr("d", d => createStarPath(xScale(d.income), yScale(d.score),0.5))
+    });
+
+}
+
+```
+```js
 function Swatches(color, {
   columns = null,
   format,
@@ -88,9 +338,7 @@ function Swatches(color, {
 }
 ```
 
-```js
-const movies = FileAttachment("movies.csv").csv({typed: true});
-```
+
 
 ```js
 let groupedData = d3.group(movies, d => d.main_genre, d => d.Director);

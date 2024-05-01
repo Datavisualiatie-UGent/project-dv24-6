@@ -5,8 +5,9 @@ import * as d3 from "npm:d3";
 export function loadActorsPerScoreAndMovieCount(movies) {
     const actorScores = {};
     const actorMoviesCount = {};
+    const actorLastMovieYear = {};
     let groupData = d3.group(movies, d => d.Actors)
-
+    console.log(groupData);
     groupData.forEach((movies, actor) => {
         const actors = actor.split(',');
         for (let i = 0; i < actors.length; i++) {
@@ -14,10 +15,14 @@ export function loadActorsPerScoreAndMovieCount(movies) {
             if (actorScores[actors[i]] === undefined) {
                 actorScores[actors[i]] = [];
                 actorMoviesCount[actors[i]] = 0;
+                actorLastMovieYear[actors[i]] = 0;
             }
             for (let j = 0; j < movies.length; j++) {
                 actorScores[actors[i]].push(parseFloat(movies[j].Rating));
                 actorMoviesCount[actors[i]]++;
+                if (parseInt(movies[j].Year) > actorLastMovieYear[actors[i]]) {
+                    actorLastMovieYear[actors[i]] = parseInt(movies[j].Year);
+                }
             }
         }
     });
@@ -27,7 +32,8 @@ export function loadActorsPerScoreAndMovieCount(movies) {
         actorData.push({
             "artist": actor,
             "mean_score": d3.mean(actorScores[actor]),
-            "movies_count": actorMoviesCount[actor]
+            "movies_count": actorMoviesCount[actor],
+            "last_year_active": actorLastMovieYear[actor]
         });
     }
     return actorData;
@@ -37,6 +43,7 @@ export function loadActorsPerScoreAndMovieCount(movies) {
 export function loadDirectorsPerScoreAndMovieCount(movies) {
     const directorScores = {};
     const directorMoviesCount = {};
+    const directorLastMovieYear = {};
     let groupData = d3.group(movies, d => d.Director)
 
     groupData.forEach((movies, director) => {
@@ -47,10 +54,14 @@ export function loadDirectorsPerScoreAndMovieCount(movies) {
             if (directorScores[directors[i]] === undefined) {
                 directorScores[directors[i]] = [];
                 directorMoviesCount[directors[i]] = 0;
+                directorLastMovieYear[directors[i]] = 0;
             }
             for (let j = 0; j < movies.length; j++) {
                 directorScores[directors[i]].push(parseFloat(movies[j].Rating));
                 directorMoviesCount[directors[i]]++;
+                if (parseInt(movies[j].Year) > directorLastMovieYear[directors[i]]) {
+                    directorLastMovieYear[directors[i]] = parseInt(movies[j].Year);
+                }
             }
         }
     });
@@ -60,7 +71,8 @@ export function loadDirectorsPerScoreAndMovieCount(movies) {
         directorData.push({
             "artist": director,
             "mean_score": d3.mean(directorScores[director]),
-            "movies_count": directorMoviesCount[director]
+            "movies_count": directorMoviesCount[director],
+            "last_year_active": directorLastMovieYear[director]
         });
     }
     return directorData;

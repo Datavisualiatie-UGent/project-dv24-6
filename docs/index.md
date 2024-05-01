@@ -468,26 +468,50 @@ const displayingActor = true;
                     background-color: #437c90">Director</button>
 </div>
 
-<div id="my_dataviz" style="position: relative; display: flex; flex-direction: column">
-    <label for="artist">Search Artist:</label>
-    <input type="text" id="artist" style="border-radius: 10px; padding: 7px">
+<div id="my_dataviz" style="position: relative; display: flex; flex-direction: column;">
+    <div style="display: flex; flex-direction: row; margin-top: 10px;">
+        <label style="margin-top: 5px; margin-right: 10px" for="artist">Search Artist:</label>
+        <input type="text" id="artist" style="border-radius: 10px; padding: 7px">
+    </div>
+    <div style="display: flex; flex-direction: row; margin-top: 10px;">
+        <label style="margin-right: 10px" for="myRange">Range of activity:</label>
+        <input type="range" id="myRange" min="0" max="10" step="0.1" value="0" style="width: 500px">
+        <label id="rangeText"></label>
+    </div>
+    <div style="display: flex; flex-direction: row; margin-top: 10px;">
+        <label style="margin-right: 10px" for="myRangeScore">Minimum score:</label>
+        <input type="range" id="myRangeScore" min="0" max="10" step="0.1" value="0" style="width: 500px">
+        <label id="rangeScoreText"></label>
+    </div>
+    <div style="display: flex; flex-direction: row; margin-top: 10px;">
+        <label style="margin-right: 10px" for="myRangeCount">Minimum amount of movies:</label>
+        <input type="range" id="myRangeCount" min="0" max="10" step="0.1" value="0" style="width: 500px">
+        <label id="rangeCountText"></label>
+    </div>
 </div>
 
 ```js
 import * as Plot from "npm:@observablehq/plot";
 import {loadActorsPerScoreAndMovieCount, loadDirectorsPerScoreAndMovieCount} from "./components/average-movie-score-loader.js"
 
+// Variables
+const [EarliestYear, LatestYear] = d3.extent(movies, d => d.Year);
+var currentYear = EarliestYear;
+var currentSearch = "";
+var currentMinScore = 0;
+var currentMinCount = 1;
 const actordata = loadActorsPerScoreAndMovieCount(movies);
 const directordata = loadDirectorsPerScoreAndMovieCount(movies);
 let actorSelected = true;
-const width = 900;
-const height = 800;
+const width = 1000;
+const height = 1000;
 const staticColor = '#437c90';
 const hoverColor = '#eec42d';
 const defaultButtonColor = "#C2C2C2";
 const activeButtonColor = "#eec42d";
 const padding = {top: 20, left: 30, right: 40, bottom: 30};
 
+// Style buttons
 const actorButton = d3.select("#actorButton");
 const directorButton = d3.select("#directorButton");
 actorButton.style("background-color", activeButtonColor); // Actors is active initially
@@ -520,15 +544,56 @@ const graph = d3.select("#my_dataviz")
 // Add the search bar to filter the data
 const search = d3.select("#artist")
     .on("input", function () {
-        const value = this.value;
-        let data = actordata
-        if (!actorSelected) {
-            data = directordata;
-        }
-        let filteredData = data.filter(d => d.artist.toLowerCase().includes(value.toLowerCase()));
-        if (value === "") {
-            filteredData = data;
-        }
+        currentSearch = this.value;
+        let filteredData = filterData();
+        transissionToOtherData(filteredData);
+    });
+
+// Slider for the range of activity
+const YearText = d3.select("#rangeText")
+    .text(`${currentYear}-${LatestYear}`);
+
+const Yearslider = d3.select("#myRange")
+    .attr("min", EarliestYear)
+    .attr("max", LatestYear)
+    .attr("value", EarliestYear)
+    .attr("step", 1)
+    .on("input", function () {
+        currentYear = this.value;
+        let filteredData = filterData();
+        YearText.text(`${currentYear}-${LatestYear}`);
+        transissionToOtherData(filteredData);
+    });
+
+// Slider for the minimum score
+const rangeScoreText = d3.select("#rangeScoreText")
+    .text(`0-10`);
+
+const rangeScoreSlider = d3.select("#myRangeScore")
+    .attr("min", 0)
+    .attr("max", 10)
+    .attr("value", 0)
+    .attr("step", 0.1)
+    .on("input", function () {
+        currentMinScore = this.value;
+        let filteredData = filterData();
+        rangeScoreText.text(`${currentMinScore}-10`);
+        transissionToOtherData(filteredData);
+    });
+
+// Slider for the minimum amount of movies
+const rangeCountText = d3.select("#rangeCountText")
+    .text(`${d3.min(actordata, d => d.movies_count)}-${d3.max(actordata, d => d.movies_count)}`);
+
+const rangeCountSlider = d3.select("#myRangeCount")
+    .attr("min", d3.min(actordata, d => d.movies_count))
+    .attr("max", d3.max(actordata, d => d.movies_count))
+    .attr("value", d3.min(actordata, d => d.movies_count))
+    .attr("step", 1)
+    .on("input", function () {
+        currentMinCount = this.value;
+        rangeCountText.text(`${currentMinCount}-${d3.max(actordata, d => d.movies_count)}`);
+        let filteredData = filterData();
         transissionToOtherData(filteredData);
     });
 
@@ -537,18 +602,20 @@ actorButton.on("click", function () {
     actorSelected = true;
     actorButton.style("background-color", activeButtonColor);
     directorButton.style("background-color", defaultButtonColor);
-    transissionToOtherData(actordata);
+    let filteredData = filterData();
+    transissionToOtherData(filteredData);
 });
 
 directorButton.on("click", function () {
     actorSelected = false;
     actorButton.style("background-color", defaultButtonColor);
     directorButton.style("background-color", activeButtonColor);
-    transissionToOtherData(directordata);
+    let filteredData = filterData(currentYear);
+    transissionToOtherData(filteredData);
 });
 
 const xScale = d3.scaleLinear()
-    .domain([0, d3.max(actordata, d => d.movies_count)])
+    .domain([d3.min(actordata, d => d.movies_count), d3.max(actordata, d => d.movies_count)])
     .range([padding.left, width - padding.right]);
 
 const yScale = d3.scaleLinear()
@@ -621,10 +688,24 @@ graph.append("text")
     .style("fill", "white")
     .text("Average Movie Score");
 
+function filterData() {
+    let data = actordata
+    if (!actorSelected) {
+        data = directordata;
+    }
+    let filteredData =  data.filter(d => d.last_year_active >= currentYear);
+    filteredData = filteredData.filter(d => d.mean_score >= currentMinScore);
+    filteredData = filteredData.filter(d => d.movies_count >= currentMinCount);
+    let finalData = filteredData.filter(d => d.artist.toLowerCase().includes(currentSearch.toLowerCase()));
+    if (currentSearch === "") {
+        finalData = filteredData;
+    }
+    return finalData;
+}
 
 function transissionToOtherData(filteredData) {
     const xScale = d3.scaleLinear()
-        .domain([0, d3.max(filteredData, d => d.movies_count)])
+        .domain([d3.min(filteredData, d => d.movies_count), d3.max(filteredData, d => d.movies_count)])
         .range([padding.left, width - padding.right]);
     const yScale = d3.scaleLinear()
         .domain([0, 10])
@@ -646,8 +727,7 @@ function transissionToOtherData(filteredData) {
         .append("circle")
         .attr("cx", d => xScale(d.movies_count))
         .attr("cy", d => yScale(d.mean_score))
-        .attr("r", 2)
-        .attr("fill", "hotpink") // Set initial fill for newly appended circles
+        .attr("r", 5)
         .transition()
         .attr("r", 5)
         .attr("fill", staticColor)

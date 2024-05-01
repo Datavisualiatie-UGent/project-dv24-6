@@ -7,7 +7,7 @@ theme: default
 
 Every big movie studio wants to make a great movie that creates a lot of revenue, but where to start. There are a lot
 of options to choose from. Which genre creates the most money. Which actor attracts people to the cinema.
-DWe did a study on the dataset of IMDB's Top 5000 movies to create a clear conclusion. We hope this helps your studio
+We did a study on the dataset of IMDB's Top 5000 movies to create a clear conclusion. We hope this helps your studio
 for making a good and profitable movie.
 
 
@@ -156,10 +156,11 @@ graph.selectAll("path")
 ;
       })
     .on('mousemove', function (evt, d) {
-        const [mx, my] = d3.pointer(evt);
+        const mx = evt["layerX"];
+        const my = evt["layerY"];
         tooltip
-            .style("left", (mx + 20) + "px")
-            .style("top", (my + 10) + "px")
+            .style("left", (mx + 15) + "px") 
+            .style("top", (my + 15) + "px")
     })
 .on('mouseout', function () {
   tooltip.html(``).style('visibility', 'hidden');
@@ -248,10 +249,11 @@ function transissionToSelectMovies(filteredData) {
         d3.select(this).transition().attr('fill', staticColor).attr("d", d => createStarPath(xScale(d.income), yScale(d.score),0.6))
     })
     .on('mousemove', function (evt, d) {
-        const [mx, my] = d3.pointer(evt);
+        const mx = evt["layerX"];
+        const my = evt["layerY"];
         tooltip
-            .style("left", (mx + 20) + "px")
-            .style("top", (my + 10) + "px")
+            .style("left", (mx + 15) + "px") 
+            .style("top", (my + 15) + "px")
     })
     .on('mouseout', function () {
         tooltip.html(``).style('visibility', 'hidden');
@@ -444,18 +446,26 @@ const displayingActor = true;
 <br>
 <div style="position: relative; display: flex; flex-direction: row;">
     <h2>Average Movie score per</h2>
-    <button id="actorButton" style="margin-left: 5px;
-                   margin-right: 3px; 
-                   font-size: larger; 
-                   font-family: Volkhov;
-                   border-radius: 7px;
-                   background-color: #437c90">Actor</button>
+    <button id="actorButton" style="margin-left: 10px;
+                    margin-right: 3px; 
+                    padding-left: 15px;
+                    padding-right: 15px;
+                    font-size: 25px; 
+                    font-family: Volkhov;
+                    border-style: none;
+                    border-radius: 20px;
+                    color: black;
+                    background-color: #eec42d">Actor</button>
     <button id="directorButton" style="margin-left: 5px;
-                   margin-right: 3px; 
-                   font-size: larger; 
-                   font-family: Volkhov;
-                   border-radius: 7px;
-                   background-color: #437c90">Director</button>
+                    margin-right: 3px; 
+                    padding-left: 15px;
+                    padding-right: 15px;
+                    font-size: 25px; 
+                    font-family: Volkhov;
+                    border-style: none;
+                    border-radius: 20px;
+                    color: black;
+                    background-color: #437c90">Director</button>
 </div>
 
 <div id="my_dataviz" style="position: relative; display: flex; flex-direction: column">
@@ -465,75 +475,24 @@ const displayingActor = true;
 
 ```js
 import * as Plot from "npm:@observablehq/plot";
+import {loadActorsPerScoreAndMovieCount, loadDirectorsPerScoreAndMovieCount} from "./components/average-movie-score-loader.js"
 
-var actorScores = {};
-var actorMoviesCount = {};
-let groupData = d3.group(movies, d => d.Actors)
-
-groupData.forEach((movies, actor) => {
-    const actors = actor.split(',');
-    for (let i = 0; i < actors.length; i++) {
-        actors[i] = actors[i].trim();
-        if (actorScores[actors[i]] === undefined) {
-            actorScores[actors[i]] = [];
-            actorMoviesCount[actors[i]] = 0;
-        }
-        for (let j = 0; j < movies.length; j++) {
-            actorScores[actors[i]].push(parseFloat(movies[j].Rating));
-            actorMoviesCount[actors[i]]++;
-        }
-    }
-});
-
-const actordata = [];
-for (const actor in actorScores) {
-    actordata.push({
-        "artist": actor,
-        "mean_score": d3.mean(actorScores[actor]),
-        "movies_count": actorMoviesCount[actor]
-    });
-}
-```
-
-```js
-var directorScores = {};
-var directorMoviesCount = {};
-let groupData = d3.group(movies, d => d.Director)
-
-groupData.forEach((movies, director) => {
-    if (director.startsWith('Directors:')) director = director.split('Directors:')[1];
-    const directors = director.split(',');
-    for (let i = 0; i < directors.length; i++) {
-        directors[i] = directors[i].trim();
-        if (directorScores[directors[i]] === undefined) {
-            directorScores[directors[i]] = [];
-            directorMoviesCount[directors[i]] = 0;
-        }
-        for (let j = 0; j < movies.length; j++) {
-            directorScores[directors[i]].push(parseFloat(movies[j].Rating));
-            directorMoviesCount[directors[i]]++;
-        }
-    }
-});
-
-const directordata = [];
-for (const director in directorScores) {
-    directordata.push({
-        "artist": director,
-        "mean_score": d3.mean(directorScores[director]),
-        "movies_count": directorMoviesCount[director]
-    });
-}
-
-```
-
-```js
+const actordata = loadActorsPerScoreAndMovieCount(movies);
+const directordata = loadDirectorsPerScoreAndMovieCount(movies);
 let actorSelected = true;
 const width = 900;
 const height = 800;
 const staticColor = '#437c90';
 const hoverColor = '#eec42d';
+const defaultButtonColor = "#C2C2C2";
+const activeButtonColor = "#eec42d";
 const padding = {top: 20, left: 30, right: 40, bottom: 30};
+
+const actorButton = d3.select("#actorButton");
+const directorButton = d3.select("#directorButton");
+actorButton.style("background-color", activeButtonColor); // Actors is active initially
+directorButton.style("background-color", defaultButtonColor);
+
 
 // Add the tooltip
 const tooltip = d3.select("#my_dataviz")
@@ -553,14 +512,14 @@ const tooltip = d3.select("#my_dataviz")
 // Create the SVG for scatter plot
 const graph = d3.select("#my_dataviz")
     .append("svg")
-      .attr("viewBox", [0, 0, width, height + padding.bottom])
-      .attr("width", width)
-      .attr("height", height)
-      .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif; position: relative")
- 
+    .attr("viewBox", [0, 0, width, height + padding.bottom])
+    .attr("width", width)
+    .attr("height", height)
+    .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif; position: relative")
+
 // Add the search bar to filter the data
 const search = d3.select("#artist")
-    .on("input", function() {
+    .on("input", function () {
         const value = this.value;
         let data = actordata
         if (!actorSelected) {
@@ -574,70 +533,73 @@ const search = d3.select("#artist")
     });
 
 // Add the buttons to switch between actor and director
-d3.select("#actorButton")
-    .on("click", function() {
-        actorSelected = true;
-        transissionToOtherData(actordata);
-    });
+actorButton.on("click", function () {
+    actorSelected = true;
+    actorButton.style("background-color", activeButtonColor);
+    directorButton.style("background-color", defaultButtonColor);
+    transissionToOtherData(actordata);
+});
 
-d3.select("#directorButton")
-    .on("click", function() {
-        actorSelected = false;
-        transissionToOtherData(directordata);
-    });
+directorButton.on("click", function () {
+    actorSelected = false;
+    actorButton.style("background-color", defaultButtonColor);
+    directorButton.style("background-color", activeButtonColor);
+    transissionToOtherData(directordata);
+});
 
 const xScale = d3.scaleLinear()
-                .domain([0, d3.max(actordata, d => d.movies_count)])
-                .range([padding.left, width - padding.right]);
+    .domain([0, d3.max(actordata, d => d.movies_count)])
+    .range([padding.left, width - padding.right]);
 
 const yScale = d3.scaleLinear()
-                .domain([0, 10])
-                .range([height - padding.bottom, padding.top]);
+    .domain([0, 10])
+    .range([height - padding.bottom, padding.top]);
 
 const xAxis = d3.axisBottom()
-                .scale(xScale);
+    .scale(xScale);
 
 const yAxis = d3.axisLeft()
-                .scale(yScale);
+    .scale(yScale);
 
 graph.selectAll("circle")
-.data(actordata)
-.enter()
-.append("circle")
-.attr("cx", d => xScale(d.movies_count))
-.attr("cy", d => yScale(d.mean_score))
-.attr("r", 4)
-.attr("fill", staticColor)
-.on('mouseover', function (d, i) {
-          tooltip
+    .data(actordata)
+    .enter()
+    .append("circle")
+    .attr("cx", d => xScale(d.movies_count))
+    .attr("cy", d => yScale(d.mean_score))
+    .attr("r", 4)
+    .attr("fill", staticColor)
+    .on('mouseover', function (d, i) {
+        tooltip
             .html(
-              `<h1>${i.artist}</h1>
+                `<h1>${i.artist}</h1>
               <div>Amount of movies: ${i.movies_count}</div>
               <div>Average movie score: ${i.mean_score.toFixed(2)}</div>`
             )
             .style('visibility', 'visible');
-          d3.select(this).transition().attr('fill', hoverColor).attr("r", 6);
-      })
-.on('mousemove', function (evt, d) {
-  const [mx, my] = d3.pointer(evt);
-  tooltip
-    .style("left", (mx + 10) + "px") 
-    .style("top", (my + 10) + "px")
-})
-.on('mouseout', function () {
-  tooltip.html(``).style('visibility', 'hidden');
-  d3.select(this).transition().attr('fill', staticColor).attr("r", 4);
-});
+        d3.select(this).transition().attr('fill', hoverColor).attr("r", 6);
+    })
+    .on('mousemove', function (evt, d) {
+        const mx = evt["layerX"];
+        const my = evt["layerY"];
+        tooltip
+            .style("left", (mx + 15) + "px")
+            .style("top", (my + 15) + "px")
+    })
+    .on('mouseout', function () {
+        tooltip.html(``).style('visibility', 'hidden');
+        d3.select(this).transition().attr('fill', staticColor).attr("r", 4);
+    });
 
-graph.append("g") 
-.attr("class", "x axis")
-.attr("transform", `translate(0, ${height - padding.bottom})`)
-.call(xAxis);
+graph.append("g")
+    .attr("class", "x axis")
+    .attr("transform", `translate(0, ${height - padding.bottom})`)
+    .call(xAxis);
 
-graph.append("g") 
-.attr("class", "y axis")
-.attr("transform", `translate(${padding.left}, 0)`)
-.call(yAxis);
+graph.append("g")
+    .attr("class", "y axis")
+    .attr("transform", `translate(${padding.left}, 0)`)
+    .call(yAxis);
 
 graph.append("text")
     .attr("class", "x label")
@@ -671,14 +633,14 @@ function transissionToOtherData(filteredData) {
         .scale(xScale);
     const yAxis = d3.axisLeft()
         .scale(yScale);
-    
+
     let circles = graph.selectAll("circle").data(filteredData);
     // Update existing circles
     circles
         .transition()
         .attr("cx", d => xScale(d.movies_count))
         .attr("cy", d => yScale(d.mean_score));
-    
+
     // Handle enter selection
     circles.enter()
         .append("circle")
@@ -689,19 +651,19 @@ function transissionToOtherData(filteredData) {
         .transition()
         .attr("r", 5)
         .attr("fill", staticColor)
-    
+
     circles.exit()
         .transition()
         .attr("r", 0)
         .remove();
-    
+
     graph.select(".x.axis")
         .transition()
         .call(xAxis);
     graph.select(".y.axis")
         .transition()
         .call(yAxis);
-    
+
     circles = graph.selectAll("circle"); // Re-select all circles after updating
     circles.on('mouseover', function (d, i) {
         tooltip
@@ -713,16 +675,17 @@ function transissionToOtherData(filteredData) {
             .style('visibility', 'visible');
         d3.select(this).transition().attr('fill', hoverColor).attr("r", 6);
     })
-    .on('mousemove', function (evt, d) {
-        const [mx, my] = d3.pointer(evt);
-        tooltip
-            .style("left", (mx + 10) + "px")
-            .style("top", (my + 10) + "px")
-    })
-    .on('mouseout', function () {
-        tooltip.html(``).style('visibility', 'hidden');
-        d3.select(this).transition().attr('fill', staticColor).attr("r", 4);
-    });
+        .on('mousemove', function (evt, d) {
+            const mx = evt["layerX"];
+            const my = evt["layerY"];
+            tooltip
+                .style("left", (mx + 15) + "px")
+                .style("top", (my + 15) + "px")
+        })
+        .on('mouseout', function () {
+            tooltip.html(``).style('visibility', 'hidden');
+            d3.select(this).transition().attr('fill', staticColor).attr("r", 4);
+        });
 }
 ```
 <br>

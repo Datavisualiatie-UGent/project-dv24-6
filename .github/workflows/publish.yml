@@ -19,14 +19,8 @@ jobs:
           node-version: 20
           cache: "npm"
 
-      - name: Restore
-        uses: actions/cache/restore@v4
-        with:
-          path: ./scraper/out
-          key: this_is_a_cool_key
-
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build
         run: npm run build

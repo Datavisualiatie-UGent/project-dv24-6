@@ -770,7 +770,11 @@ function transissionToOtherData(filteredData) {
 ```
 <br>
 <h2>Average gross income per year and per genre</h2>
-<select id="yearSelect"></select>
+<div style="display: flex; flex-direction: row; margin-top: 10px;">
+    <label style="margin-right: 10px" for="yearSelect" >Select year:</label>
+    <input type="range" id="yearSelect" min="0" max="10" step="0.1" value="0" style="width: 500px">
+    <label id="yearText"></label>
+</div>
 <div id="line-plot"></div>
 
 ```js
@@ -792,7 +796,7 @@ groupData.forEach((values, year) => {
     })
     finishedFilter.push({year: year, average_gross_genre: result})
 })
-let sorted = d3.sort(finishedFilter, d => -d.year).filter(d => d.average_gross_genre.filter(t => t.average_gross != 0).length != 0)
+let sorted = d3.sort(finishedFilter, d => d.year).filter(d => d.average_gross_genre.filter(t => t.average_gross != 0).length != 0)
 
 // Graph marges
 const margin = {top: 20, right: 20, bottom: 50, left: 50};
@@ -802,16 +806,9 @@ const height = 400 - margin.top - margin.bottom;
 // Genres list
 const genres = ['Action', 'Biography', 'Film-Noir', 'Western', 'Musical', 'Animation', 'Adventure', 'Crime', 'Comedy', 'Drama', 'Mystery', 'Horror', 'Fantasy'].sort()
 
-// Creat selection for year
-const select = d3.select("#yearSelect");
-select.selectAll("option")
-    .data(sorted)
-    .enter().append("option")
-    .text(d => d.year);
-
 // Create graph when selected
-function updateChart(data) {
-    const yearData = data.average_gross_genre
+function updateChart(year) {
+    const yearData = sorted.filter(d => d.year == year)[0].average_gross_genre
 
     // Add missing data for graph
     for (let temp of genres) {
@@ -822,16 +819,7 @@ function updateChart(data) {
 
     // Remove already existing graph
     d3.select("#line-plot").selectAll("*").remove();
-
-    // Add title text
-    d3.select("#line-plot").append("h3")
-        .attr("x", (width / 2))
-        .attr("y", 0 - (margin.top / 2))
-        .attr("text-anchor", "middle")
-        .style("font-size", "16px")
-        .style("fill", "#F0F8FF")
-        .text("Average gross income by Genre in the year " + data.year);
-
+    
     // Create svg for creating graph
     const svg = d3.select("#line-plot").append("svg")
         .attr("width", width + margin.left + margin.right)
@@ -852,28 +840,37 @@ function updateChart(data) {
         .domain([0, max + 10])
         .range([height, 0]);
 
-    // Add bars
+    // Add bars with transition
     svg.selectAll(".bar")
         .data(yearData)
         .enter().append("rect")
         .attr("class", "bar")
         .attr("x", d => x(d.genre))
         .attr("width", x.bandwidth())
-        .attr("y", d => y(d.average_gross))
-        .attr("height", d => height - y(d.average_gross))
+        .attr("y", height)
+        .attr("height", 0)
         .style("fill", "#69b3a2")
+        .transition()
+        .duration(1000)
+        .delay((d, i) => i * 100)
+        .attr("y", d => y(d.average_gross))
+        .attr("height", d => height - y(d.average_gross));
 
-    // Add money on top of bar
+    // Add money on top of bar with transition
     svg.selectAll(".income-text")
         .data(yearData)
         .enter().append("text")
         .attr("class", "income-text")
         .attr("x", d => x(d.genre) + x.bandwidth() / 2)
-        .attr("y", d => y(d.average_gross) - 5) // Adjust position to be slightly above the bar
+        .attr("y", height)
         .attr("text-anchor", "middle")
         .text(d => `$${d.average_gross}M`)
         .style("font-size", "12px")
-        .style("fill", "white");
+        .style("fill", "white")
+        .transition()
+        .duration(1000)
+        .delay((d, i) => i * 100)
+        .attr("y", d => y(d.average_gross) - 5);
 
     // Draw x axis
     svg.append("g")
@@ -887,14 +884,26 @@ function updateChart(data) {
         .call(d3.axisLeft(y));
 }
 
-// Default start value
-updateChart(sorted[Object.keys(sorted)[0]]);
+let currentYear = sorted[0].year;
 
-// Event listener for select box
-select.on("change", function () {
-    const selectedYear = this.value;
-    updateChart(sorted.filter(d => d.year == selectedYear)[0]);
-});
+// Slider for the range of activity
+const YearText = d3.select("#yearText")
+    .text(`${currentYear}`);
+
+const Yearslider = d3.select("#yearSelect")
+    .attr("min", sorted[0].year)
+    .attr("max", sorted[sorted.length - 1].year)
+    .attr("value", sorted[0].year)
+    .attr("step", 1)
+    .on("input", function () {
+        currentYear = this.value;
+        updateChart(currentYear);
+        YearText.text(`${currentYear}`)
+    })
+
+// Default start value
+updateChart(currentYear);
+
 ```
 <br>
 <h2>Average box-office per rating</h2>

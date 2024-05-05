@@ -346,11 +346,17 @@ function Swatches(color, {
 let groupedData = d3.group(movies, d => d.main_genre, d => d.Director);
 const color = d3.scaleOrdinal([...new Set(movies.map(d => d.main_genre))], d3.schemeSet3);
 let totalGrossData = [];
+let maxMovies = 0;
 groupedData.forEach((directors, mainGenre) => {
     directors.forEach((movies, director) => {
-        let totalGross = parseFloat(d3.sum(movies, d => parseFloat(d.Total_Gross.match(/[0-9.]+/))).toFixed(2));
-        if (director.startsWith('Directors:')) director = director.split('Directors:')[1];
-        if (totalGross > 0) totalGrossData.push({ mainGenre, director, totalGross });
+        const totalGross = parseFloat(d3.sum(movies, d => parseFloat(d.Total_Gross.match(/[0-9.]+/))).toFixed(2));
+        if (totalGross > 0) {
+            const moviesMade = movies.length;
+            if (moviesMade > maxMovies) maxMovies = moviesMade;
+            const averageGross = totalGross / moviesMade;
+            if (director.startsWith('Directors:')) director = director.split('Directors:')[1];
+            totalGrossData.push({ mainGenre, director, averageGross, moviesMade });
+        }
     });
 });
 const width = 900;
@@ -365,11 +371,11 @@ let treemapLayout = d3.treemap()
 let groupedByGenre = d3.group(totalGrossData, d => d.mainGenre);
 let top10PerGenre = new Map();
 groupedByGenre.forEach((values, genre) => {
-    let sortedValues = values.slice().sort((a, b) => b.totalGross - a.totalGross);
+    let sortedValues = values.slice().sort((a, b) => b.averageGross - a.averageGross);
     top10PerGenre.set(genre, sortedValues.slice(0, 10));
 });
 let root = d3.hierarchy({children: Array.from(top10PerGenre, ([key, value]) => ({ mainGenre: key, children: value }))})
-    .sum(d => d.totalGross)
+    .sum(d => d.averageGross)
     .sort((a, b) => b.value - a.value);
 
 treemapLayout(root);
@@ -379,7 +385,7 @@ function generateUniqueId() {
     return `id_${counter++}`;
 }
 
-const treemap = d3.create("svg")
+let treemap = d3.create("svg")
   .attr("viewBox", [0, 0, width, height])
   .attr("width", width)
   .attr("height", height)
@@ -405,6 +411,28 @@ leaf.append("clipPath")
       .attr("id", d => (d.clipUid = generateUniqueId()))
     .append("use")
       .attr("xlink:href", d => d.leafUid.href);
+
+const hide = () => {
+    const div = document.getElementById("highlight");
+    div.innerHTML = "";
+    div.style.display = "none";
+};
+
+const show = data => {
+    const div = document.getElementById("highlight");
+    div.innerHTML = `Director(s): ${data.director}<br>Main Genre: ${data.mainGenre}<br>Average Gross Income: $${format(data.averageGross)}M<br>Movies made in genre: ${data.moviesMade}`;
+    div.style.display = "block";
+};
+
+leaf.on("click", function(d) {
+    const clickedRect = d3.select(this).select("rect");
+    const isHighlighted = clickedRect.attr("fill-opacity") === "1";
+    leaf.selectAll("rect").attr("fill-opacity", 0.6);
+    if (!isHighlighted) {
+        clickedRect.attr("fill-opacity", 1);
+        show(d.target.__data__.data);
+    } else hide();
+});
 
 const textLeaf = treemap.selectAll("g").filter(d => {
     return ((d.x1 - d.x0) > 50 && (d.y1 - d.y0) > 32);
@@ -433,14 +461,95 @@ smallLeaf.append("text")
       .text(d => d);
 
 Object.assign(treemap.node(), {scales: {color}});
-let legend = Swatches(color)
+let legend = Swatches(color);
+let vis = false;
 
 const displayingActor = true;
+const slider = document.getElementById("slider");
+slider.max = maxMovies;
+const value = document.getElementById("value");
+
+slider.addEventListener("input", function() {
+    const filterValue = +this.value;
+    value.textContent = filterValue;
+    filterNodesByMoviesMade(filterValue);
+});
+
+const filterNodesByMoviesMade = minMoviesMade => {
+    let top10PerGenre = new Map();
+    groupedByGenre.forEach((values, genre) => {
+        let sortedValues = values.slice().sort((a, b) => b.averageGross - a.averageGross).filter(d => d.moviesMade >= minMoviesMade);
+        top10PerGenre.set(genre, sortedValues.slice(0, 10));
+    });
+    let root = d3.hierarchy({children: Array.from(top10PerGenre, ([key, value]) => ({ mainGenre: key, children: value }))})
+        .sum(d => d.averageGross)
+        .sort((a, b) => b.value - a.value);
+    const filteredLeaves = root.leaves();
+    
+    treemapLayout(root);
+    treemap.selectAll("g").remove();
+    const leaf = treemap.selectAll("g")
+        .data(filteredLeaves, d => d.data.director)
+        .join("g")
+        .attr("transform", d => `translate(${d.x0},${d.y0})`);
+    leaf.append("title")
+        .text(d => `[${d.data.mainGenre}]\n${d.data.director}\n$${format(d.value)}M`);
+    leaf.append("rect")
+        .attr("id", d => (d.leafUid = generateUniqueId()))
+        .attr("fill", d => { while (d.depth > 1) d = d.parent; return color(d.data.mainGenre); })
+        .attr("fill-opacity", 0.6)
+        .attr("width", d => d.x1 - d.x0)
+        .attr("height", d => d.y1 - d.y0);
+    leaf.append("clipPath")
+        .attr("id", d => (d.clipUid = generateUniqueId()))
+        .append("use")
+        .attr("xlink:href", d => d.leafUid.href);
+    leaf.on("click", function(d) {
+        const clickedRect = d3.select(this).select("rect");
+        const isHighlighted = clickedRect.attr("fill-opacity") === "1";
+        leaf.selectAll("rect").attr("fill-opacity", 0.6);
+        if (!isHighlighted) {
+            clickedRect.attr("fill-opacity", 1);
+            show(d.target.__data__.data);
+        } else hide();
+    });
+    const textLeaf = treemap.selectAll("g").filter(d => {
+        return ((d.x1 - d.x0) > 50 && (d.y1 - d.y0) > 32);
+    });
+    textLeaf.append("text")
+        .attr("clip-path", d => d.clipUid)
+        .selectAll("tspan")
+        .data(d => d.data.director.split(/(?=[A-Z][a-z])|\s+/g).concat(`$${format(d.value)}M`))
+        .join("tspan")
+        .attr("x", 3)
+        .attr("y", (d, i, nodes) => `${(i === nodes.length - 1) * 0.3 + 1.1 + i * 0.9}em`)
+        .attr("fill-opacity", (d, i, nodes) => i === nodes.length - 1 ? 0.7 : null)
+        .text(d => d);
+
+    const smallLeaf = treemap.selectAll("g").filter(d => {
+        return ((d.x1 - d.x0) <= 50 || (d.y1 - d.y0) <= 32);
+    });
+    smallLeaf.append("text")
+        .attr("clip-path", d => d.clipUid)
+        .selectAll("tspan")
+        .data(d => ['...'])
+        .join("tspan")
+        .attr("x", 3)
+        .attr("y", (d, i, nodes) => `${(i === nodes.length - 1) * 0.3 + 1.1 + i * 0.9}em`)
+        .attr("fill-opacity", (d, i, nodes) => i === nodes.length - 1 ? 0.7 : null)
+        .text(d => d);
+}
 ```
 
 <br>
 <h2>Most successful directors per movie genre</h2>
 <div>${legend}</div>
+<div id="highlight" style="display: none;"></div>
+<div id="sliderDiv">
+  <label for="slider">Filter By Number Of Movies Made In Genre:</label>
+  <input type="range" min="1" max="1" value="0" id="slider">
+  <span id="value">1</span>
+</div>
 <div>${treemap}</div>
 
 <br>

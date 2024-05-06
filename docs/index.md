@@ -1157,7 +1157,7 @@ svg
 .enter()
 .append("rect")
     .attr("x", d => x(d.q1)) // console.log(x(d.value.q1)) ;
-    .attr("width", d => x(d.q3)-x(d.q1) != 0 ? x(d.q3)-x(d.q1) : 4) //console.log(x(d.value.q3)-x(d.value.q1))
+    .attr("width", d => x(d.q3)-x(d.q1) != 0 ? x(d.q3)-x(d.q1) : 2) //console.log(x(d.value.q3)-x(d.value.q1))
     .attr("y", d => y(d.censor))
     .attr("height", y.bandwidth())
     .attr("stroke", "black")

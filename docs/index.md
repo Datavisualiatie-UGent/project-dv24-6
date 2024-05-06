@@ -17,11 +17,25 @@ const movies = FileAttachment("movies.csv").csv({typed: true});
 
 <br>
 <div style="position: relative; display: flex; flex-direction: row;">
-    <h2>Gross income vs score</h2>
+    <h2>Gross income vs score in:</h2>
+<select id="GrossGenreSelect" style="margin-left: 10px;
+                    margin-right: 3px; 
+                    padding-left: 15px;
+                    padding-right: 15px;
+                    font-size: 25px; 
+                    font-family: Volkhov;
+                    border-style: none;
+                    border-radius: 20px;
+                    "></select>
 </div>
 <div id="incomescore" style="position: relative; display: flex; flex-direction: column">
     <label for="name">Search Movie:</label>
     <input type="text" id="name" style="border-radius: 10px; padding: 7px">
+    <div style="display: flex; flex-direction: row; margin-top: 10px;">
+        <label style="margin-right: 10px" for="myRange">Range of release year:</label>
+        <input type="range" id="GrossRange" min="0" max="10" step="0.1" value="0" style="width: 500px">
+        <label id="rangeGross"></label>
+    </div>
 </div>
 
 
@@ -31,7 +45,9 @@ import * as Plot from "npm:@observablehq/plot";
 
 var movieScores = {};
 var movieIncome = {};
-
+var movieYear = {};
+var movieGenre = {};
+var GrossGenres = new Set();
 movies.forEach(movie => {
     let movieName = movie.Movie_Title;
     let gross = movie.Total_Gross.trim();
@@ -39,23 +55,42 @@ movies.forEach(movie => {
         movieIncome[movieName] = parseFloat(gross.substring(1, gross.length - 1));
         let score = movie.Rating;   
         movieScores[movieName] = parseFloat(score);
+        movieYear[movieName] = parseInt(movie.Year);
+        movieGenre[movieName] = []
+        movieGenre[movieName].push(movie.main_genre);
+        for(let side of movie.side_genre.split(',')){
+            side = side.trim();
+            movieGenre[movieName].push(side);
+            GrossGenres.add(side);
+        }
+        GrossGenres.add(movie.main_genre);
     }
+    
+    
 });
-
+GrossGenres = Array.from(GrossGenres);
+GrossGenres.sort();
+GrossGenres.unshift("All Movies");
 const moviedata = [];
-        console.log(movieScores);
 for (const movie in movieScores) {
 
     moviedata.push({
         "movie": movie,
         "score": movieScores[movie],
-        "income": movieIncome[movie]
+        "income": movieIncome[movie],
+        "Year": movieYear[movie],
+        "genres": movieGenre[movie]
     });
 }
 ```
 
 
 ```js
+const [GrossEarliestYear, GrossLatestYear] = d3.extent(movies, d => d.Year);
+var GrosscurrentYear = GrossEarliestYear;
+var GrosscurrentSearch = "";
+var GrosscurrentGenre = "All Movies";
+
 const width = 900;
 const height = 800;
 const staticColor = '#437c90';
@@ -64,6 +99,13 @@ const padding = {top: 20, left: 30, right: 40, bottom: 30};
 let prevXScale = [d3.scaleLinear()
         .domain([0, d3.max(moviedata, d => d.income)])
         .range([padding.left, width - padding.right])];
+
+const select = d3.select("#GrossGenreSelect");
+
+select.selectAll("option")
+    .data(GrossGenres)
+    .enter().append("option")
+    .text(d => d);
 
 // Add the tooltip
 const tooltip = d3.select("#incomescore")
@@ -89,18 +131,44 @@ const graph = d3.select("#incomescore")
       .attr("width", width)
       .attr("height", height)
       .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif; position: relative")
+
+function GrossFilter() {
+    let filteredData = moviedata.filter(d=>d.Year >= GrosscurrentYear);
+    if(GrosscurrentGenre != "All Movies"){
+        filteredData = filteredData.filter(d=>d.genres.includes(GrosscurrentGenre));
+    }
+    let searchData = filteredData.filter(d => d.movie.toLowerCase().includes(GrosscurrentSearch.toLowerCase()));
+    if (GrosscurrentSearch === "") {
+        searchData = filteredData;
+    }
+    transissionToSelectMovies(searchData);
+}
+
+select.on("change", function () {
+    GrosscurrentGenre = this.value;
+    GrossFilter();
+});
+
 const search = d3.select("#name")
     .on("input", function() {
-        const value = this.value;
-        console.log(value);
-        let filteredData = moviedata.filter(d => d.movie.toLowerCase().includes(value.toLowerCase()));
-        if (value === "") {
-            filteredData = moviedata;
-        }
-        transissionToSelectMovies(filteredData);
+        GrosscurrentSearch = this.value;
+        GrossFilter();
     });
 
 
+const YearText = d3.select("#rangeGross")
+    .text(`${GrosscurrentYear}-${GrossLatestYear}`);
+
+const Yearslider = d3.select("#GrossRange")
+    .attr("min", EarliestYear)
+    .attr("max", LatestYear)
+    .attr("value", EarliestYear)
+    .attr("step", 1)
+    .on("input", function () {
+        GrosscurrentYear = this.value;
+        GrossFilter();
+        YearText.text(`${GrosscurrentYear}-${LatestYear}`);
+    });
 const xScale = d3.scaleLinear()
                 .domain([0, d3.max(moviedata, d => d.income)])
                 .range([padding.left, width - padding.right]);
@@ -199,7 +267,6 @@ graph.append("text")
     .text("Movie Score");
 
 function transissionToSelectMovies(filteredData) {
-
     const xScale = d3.scaleLinear()
         .domain([0, d3.max(filteredData, d => d.income)])
         .range([padding.left, width - padding.right]);
@@ -218,15 +285,15 @@ function transissionToSelectMovies(filteredData) {
         .attr("d", d => createStarPath(xScale(d.income), yScale(d.score),0.5))
     path.enter()
         .append("path")
-        .attr("d", d => createStarPath(xScale(d.income), yScale(d.score),0.3))
-        .attr("fill", "hotpink") // Set initial fill for newly appended circles
+        .attr("d", d => createStarPath(xScale(d.income), yScale(d.score),0.1))
+        .attr("fill", hoverColor)
         .transition()
         .attr("d", d => createStarPath(xScale(d.income), yScale(d.score),0.5))
-        .attr("fill", hoverColor)
-
         path.exit()
             .transition()
-                  .attr("d",d=>d===null?d:createStarPath(prevXScale[0](d.income),yScale(d.score),0.1))
+                  .attr("d",d=> 
+                      d === null ? d : createStarPath(prevXScale[0](d.income), yScale(d.score), 0.1)
+                  )
                   
             .remove();
     prevXScale[0]=xScale;
@@ -238,7 +305,7 @@ function transissionToSelectMovies(filteredData) {
         .call(yAxis);
     
     path = graph.selectAll("path"); // Re-select all circles after updating
-    path.on('mouseover', function (d, i) {
+    path.filter(d=>d!==null).on('mouseover', function (d, i) {
         tooltip
             .html(
               `<h1>${i.movie}</h1>
@@ -339,7 +406,6 @@ function Swatches(color, {
   <div>${domain.map(value => htl.html`<span class="${id}" style="--color: ${color(value)}">${format(value)}</span>`)}</div>`;
 }
 ```
-
 
 
 ```js

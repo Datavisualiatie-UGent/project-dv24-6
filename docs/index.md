@@ -61,13 +61,12 @@ movies.forEach(movie => {
         for(let side of movie.side_genre.split(',')){
             side = side.trim();
             movieGenre[movieName].push(side);
+            GrossGenres.add(side);
         }
+        GrossGenres.add(movie.main_genre);
     }
-    GrossGenres.add(movie.main_genre);
-    for(let side of movie.side_genre.split(',')){
-        side = side.trim();
-        GrossGenres.add(side);
-    }
+    
+    
 });
 
 const moviedata = [];
@@ -284,8 +283,10 @@ function transissionToSelectMovies(filteredData) {
         .attr("d", d => createStarPath(xScale(d.income), yScale(d.score),0.5))
     path.enter()
         .append("path")
-        .attr("d", d => createStarPath(xScale(d.income), yScale(d.score),0.5))
+        .attr("d", d => createStarPath(xScale(d.income), yScale(d.score),0.1))
         .attr("fill", hoverColor)
+        .transition()
+        .attr("d", d => createStarPath(xScale(d.income), yScale(d.score),0.5))
         path.exit()
             .transition()
                   .attr("d",d=> 

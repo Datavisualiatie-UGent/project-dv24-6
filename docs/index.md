@@ -1044,7 +1044,7 @@ updateChart(currentYear);
 <br>
 <h2>Average box-office per rating</h2>
 For censor ratings "12" and "18+" the box-office is unknown. The box-office is in million dollars.
-<div id="averageBoxOffice"></div>
+<div id="boxplots"></div>
 
 ```js
 var censorBoxOffice = {};
@@ -1060,18 +1060,26 @@ groupedDataByCensor.forEach((movies, censor) => {
 });
 
 const combinedArray = censorBoxOffice['Not Rated'].concat(censorBoxOffice['Unrated']);
-const average = d3.mean(combinedArray);
-censorBoxOffice['Not Rated'] = [];
-censorBoxOffice['Not Rated'].push(average);
+censorBoxOffice['Not Rated'] = combinedArray
 
 const order = ['Not Rated', '(Banned)', 'All', 'U', 'G', 'U/A', 'PG', 'PG-13', '7', 'UA 7+', 'UA', '12+', '13', 'UA 13+', '15+', '16', 'UA 16+', 'R', 'NC-17', '18', 'M/PG', 'A']
 const boxOfficeData = [];
 for (const censor of order) {
-    console.log(censor)
     if (censor !== 'Unrated' && censor !== '12' && censor !== '18+') {
+        var data_sorted = censorBoxOffice[censor].sort(d3.ascending)
+        var q1 = d3.quantile(data_sorted, .25)
+        var median = d3.quantile(data_sorted, .5)
+        var q3 = d3.quantile(data_sorted, .75)
+        var interQuantileRange = q3 - q1
+        var min = q1 - 1.5 * interQuantileRange
+        var max = q1 + 1.5 * interQuantileRange
         boxOfficeData.push({
-            "Censor": censor,
-            "Value": d3.mean(censorBoxOffice[censor])
+            censor: censor,
+            minimum: min,
+            maximum: max,
+            q1: q1,
+            median: median,
+            q3: q3
         });
     }
 }
@@ -1079,13 +1087,14 @@ for (const censor of order) {
 ```
 
 ```js
-// set the dimensions and margins of the graph
-var margin = {top: 30, right: 30, bottom: 70, left: 60};
-const width = 900;
-const height = 800;
+let global_max = d3.max(boxOfficeData, d => d.maximum)
+let global_min = d3.min(boxOfficeData, d => d.minimum)
+var margin = {top: 10, right: 30, bottom: 30, left: 60}
+const width = 900
+const height = 1000;
 
 // append the svg object to the body of the page
-var svg = d3.select("#averageBoxOffice")
+var svg = d3.select("#boxplots")
   .append("svg")
     .attr("width", width + margin.left + margin.right)
     .attr("height", height + margin.top + margin.bottom)
@@ -1093,57 +1102,98 @@ var svg = d3.select("#averageBoxOffice")
     .attr("transform",
           "translate(" + margin.left + "," + margin.top + ")");
 
+var tooltip = d3.select("#boxplots").append("div")
+    .attr("class", "tooltip")
+    .style("opacity", 0);
 
-// X axis
-var x = d3.scaleLinear()
-    .domain([0, 250])
-    .range([ 0, width ]);
-    
-svg.append("g")
-  .attr("transform", "translate(0," + height + ")")
-  .call(d3.axisBottom(x))
-  .selectAll("text")
-    .attr("transform", "translate(-10,0)rotate(-45)")
-    .style("text-anchor", "end");
-
-svg.append("text")
-    .attr("class", "x label")
-    .attr("text-anchor", "end")
-    .attr("x", 600)
-    .attr("y", height + 55)
-    .text("Average box-office (in million dollars)")
-    .style("font-size", "20px")
-    .style("fill", "white");
-
-// Add Y axis
 var y = d3.scaleBand()
-    .domain(boxOfficeData.map(function(d) { return d.Censor; }))
-    .range([ height, 0])
-    .padding(0.2);
+    .range([height, 0 ])
+    .domain(order)
+    .padding(.4);
+  
 svg.append("g")
-  .call(d3.axisLeft(y));
+    .call(d3.axisLeft(y).tickSize(0))
+    .select(".domain").remove()
 
-// Bars
-let bars = svg.selectAll("mybar")
+// Show the X scale
+var x = d3.scaleLinear()
+.domain([global_min, global_max])
+.range([0, width])
+
+svg.append("g")
+    .attr("transform", "translate(0," + height + ")")
+    .call(d3.axisBottom(x).ticks(5))
+
+svg.selectAll("vertLines")
     .data(boxOfficeData)
     .enter()
-    .append("g")
-    
-bars.append("rect")
-    .attr("class", "bar")
-    .attr("x", x(0))
-    .attr("y", function(d) { return y(d.Censor); } )
-    .attr("width", function(d) { return x(d.Value); })
-    .attr("height",function(d) { return y.bandwidth(); } )
-    .attr("fill", "#F5C518");
+    .append("line")
+      .attr("x1", d => x(d.minimum))
+      .attr("x2", d => x(d.maximum))
+      .attr("y1", d => y(d.censor) + y.bandwidth()/2)
+      .attr("y2", d => y(d.censor) + y.bandwidth()/2)
+      .attr("stroke", "white")
+      .style("width", 40)
 
-bars.append("text")
-    .attr("class", "label")
-    .attr("x", function(d) { return x(d.Value) + 35; })
-    .attr("y", function(d) { return y(d.Censor) + y.bandwidth() * (0.5 + 0.1); }) // Adjust position to be slightly above the bar
-    .attr("text-anchor", "middle")
-    .text(function(d) { return `$${d.Value.toFixed(2)}M`; })
-    .style("font-size", "12px")
-    .style("fill", "white")
-    .style("font-weight", "bold");
+// Add the tooltip
+const box_tooltip = d3.select("#boxplots")
+    .append('div')
+    .attr('class', 'd3-tooltip')
+    .style('position', 'absolute')
+    .style('z-index', '10')
+    .style('visibility', 'hidden')
+    .style('padding', '10px')
+    .style('background', 'rgba(0,0,0,1)')
+    .style('border-radius', '4px')
+    .style('color', '#fff')
+    .style('left', "0px")
+    .style('top', "0px")
+    .text('a simple tooltip');
+
+// rectangle for the main box
+svg
+.selectAll("boxes")
+.data(boxOfficeData)
+.enter()
+.append("rect")
+    .attr("x", d => x(d.q1)) // console.log(x(d.value.q1)) ;
+    .attr("width", d => x(d.q3)-x(d.q1) != 0 ? x(d.q3)-x(d.q1) : 4) //console.log(x(d.value.q3)-x(d.value.q1))
+    .attr("y", d => y(d.censor))
+    .attr("height", y.bandwidth())
+    .attr("stroke", "black")
+    .style("fill", "#F5C518")
+    .style("opacity", 0.3)
+    .on('mouseover', function (d, i) {
+        box_tooltip
+            .html(
+                `<h1>Rating: ${i.censor}</h1>
+                <div>Q1: $${i.q1.toFixed(2)}M</div>
+                <div>Median: $${i.median.toFixed(2)}M</div>
+                <div>Q3: $${i.q3.toFixed(2)}M</div>`
+            )
+            .style('visibility', 'visible');
+    })
+    .on('mousemove', function (evt, d) {
+        const mx = evt["layerX"];
+        const my = evt["layerY"];
+        box_tooltip
+            .style("left", (mx + 15) + "px")
+            .style("top", (my + 15) + "px")
+    })
+    .on('mouseout', function () {
+        box_tooltip.html(``).style('visibility', 'hidden');
+    });
+
+// Show the median
+svg
+.selectAll("medianLines")
+.data(boxOfficeData)
+.enter()
+.append("line")
+  .attr("y1", d => y(d.censor))
+  .attr("y2", d => y(d.censor) + y.bandwidth())
+  .attr("x1", d => x(d.median))
+  .attr("x2", d => x(d.median))
+  .attr("stroke", "white")
+  .style("width", 80)
 ```

@@ -47,7 +47,7 @@ var movieScores = {};
 var movieIncome = {};
 var movieYear = {};
 var movieGenre = {};
-var GrossGenres = new Set(["All Movies"]);
+var GrossGenres = new Set();
 movies.forEach(movie => {
     let movieName = movie.Movie_Title;
     let gross = movie.Total_Gross.trim();
@@ -68,7 +68,9 @@ movies.forEach(movie => {
     
     
 });
-
+GrossGenres = Array.from(GrossGenres);
+GrossGenres.sort();
+GrossGenres.unshift("All Movies");
 const moviedata = [];
 for (const movie in movieScores) {
 
@@ -406,26 +408,100 @@ function Swatches(color, {
 ```
 
 
-
 ```js
-let groupedData = d3.group(movies, d => d.main_genre, d => d.Director);
+let groupedData;
+let maxMovies;
+let totalGrossData;
+let groupedByGenre;
 const color = d3.scaleOrdinal([...new Set(movies.map(d => d.main_genre))], d3.schemeSet3);
-let totalGrossData = [];
-let maxMovies = 0;
-groupedData.forEach((directors, mainGenre) => {
-    directors.forEach((movies, director) => {
-        const totalGross = parseFloat(d3.sum(movies, d => parseFloat(d.Total_Gross.match(/[0-9.]+/))).toFixed(2));
-        if (totalGross > 0) {
-            const moviesMade = movies.length;
-            if (moviesMade > maxMovies) maxMovies = moviesMade;
-            const averageGross = totalGross / moviesMade;
-            if (director.startsWith('Directors:')) director = director.split('Directors:')[1];
-            totalGrossData.push({ mainGenre, director, averageGross, moviesMade });
-        }
+const groupData = by => {
+    groupedData = d3.group(movies, d => d.main_genre, d => d[by]);
+    totalGrossData = [];
+    maxMovies = 0;
+    groupedData.forEach((directors, mainGenre) => {
+        directors.forEach((movies, director) => {
+            const totalGross = parseFloat(d3.sum(movies, d => parseFloat(d.Total_Gross.match(/[0-9.]+/))).toFixed(2));
+            if (totalGross > 0) {
+                const moviesMade = movies.length;
+                if (moviesMade > maxMovies) maxMovies = moviesMade;
+                const averageGross = (totalGross / moviesMade).toFixed(2);
+                if (director.startsWith('Directors:')) director = director.split('Directors:')[1];
+                totalGrossData.push({ mainGenre, director, averageGross, moviesMade });
+            }
+        });
     });
-});
+    groupedByGenre = d3.group(totalGrossData, d => d.mainGenre);
+};
+groupData('Director');
+
 const width = 900;
 const height = 800;
+const buildTreemap = leaves => {
+    treemap.selectAll("g").remove();
+    const leaf = treemap.selectAll("g")
+        .data(leaves, d => d.data.director)
+        .join("g")
+        .attr("transform", d => `translate(${d.x0},${d.y0})`);
+    leaf.append("rect")
+        .attr("id", d => (d.leafUid = generateUniqueId()))
+        .attr("fill", d => { while (d.depth > 1) d = d.parent; return color(d.data.mainGenre); })
+        .attr("fill-opacity", 0.6)
+        .attr("width", d => d.x1 - d.x0)
+        .attr("height", d => d.y1 - d.y0);
+    leaf.append("clipPath")
+        .attr("id", d => (d.clipUid = generateUniqueId()))
+        .append("use")
+        .attr("xlink:href", d => d.leafUid.href);
+    leaf.on("mouseover", function(d) {
+        const clickedRect = d3.select(this).select("rect");
+        const isHighlighted = clickedRect.attr("fill-opacity") === "1";
+        if (!isHighlighted) {
+            leaf.selectAll("rect").attr("fill-opacity", 0.6);
+            clickedRect.attr("fill-opacity", 1);
+        }
+        const data = clickedRect._groups[0][0].__data__.data;
+        treemapTool.html(`<h1>${data.mainGenre}</h1>
+        <div>${actorSelected ? 'Actor(s)' : 'Director(s)'}: ${data.director}</div>
+        <div>Average Income Per Movie: $${data.averageGross}M</div>
+        <div>Movies Made In Genre: ${data.moviesMade}</div>`).style('visibility', 'visible');
+    }).on('mousemove', function (evt, d) {
+        const mx = evt["layerX"];
+        const my = evt["layerY"];
+        treemapTool
+            .style("left", (mx + 15) + "px")
+            .style("top", (my + 15) + "px")
+    })
+    .on('mouseout', function () {
+        leaf.selectAll("rect").attr("fill-opacity", 0.6);
+        treemapTool.html(``).style('visibility', 'hidden');
+    });
+    const textLeaf = treemap.selectAll("g").filter(d => {
+        return ((d.x1 - d.x0) > 50 && (d.y1 - d.y0) > 32);
+    });
+    textLeaf.append("text")
+        .attr("clip-path", d => d.clipUid)
+        .selectAll("tspan")
+        .data(d => [`$${format(d.value)}M`])
+        .join("tspan")
+        .attr("x", 3)
+        .attr("y", (d, i, nodes) => `${1.1 + i * 0.9}em`)
+        .attr("font-size", 13)
+        .attr("font-weight", "bold")
+        .attr("fill-opacity", (d, i, nodes) => null)
+        .text(d => d);
+    const smallLeaf = treemap.selectAll("g").filter(d => {
+        return ((d.x1 - d.x0) <= 50 || (d.y1 - d.y0) <= 32);
+    });
+    smallLeaf.append("text")
+        .attr("clip-path", d => d.clipUid)
+        .selectAll("tspan")
+        .data(d => ['...'])
+        .join("tspan")
+        .attr("x", 3)
+        .attr("y", (d, i, nodes) => `${(i === nodes.length - 1) * 0.3 + 1.1 + i * 0.9}em`)
+        .attr("fill-opacity", (d, i, nodes) => i === nodes.length - 1 ? 0.7 : null)
+        .text(d => d);
+};
 
 let treemapLayout = d3.treemap()
     .tile(d3.treemapSquarify)
@@ -433,7 +509,6 @@ let treemapLayout = d3.treemap()
     .padding(1)
     .round(true);
 
-let groupedByGenre = d3.group(totalGrossData, d => d.mainGenre);
 let top10PerGenre = new Map();
 groupedByGenre.forEach((values, genre) => {
     let sortedValues = values.slice().sort((a, b) => b.averageGross - a.averageGross);
@@ -444,7 +519,7 @@ let root = d3.hierarchy({children: Array.from(top10PerGenre, ([key, value]) => (
     .sort((a, b) => b.value - a.value);
 
 treemapLayout(root);
-
+let actorSelected = false;
 let counter = 0;
 function generateUniqueId() {
     return `id_${counter++}`;
@@ -456,74 +531,22 @@ let treemap = d3.create("svg")
   .attr("height", height)
   .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif;");
 
-const leaf = treemap.selectAll("g")
-    .data(root.leaves())
-    .join("g")
-    .attr("transform", d => `translate(${d.x0},${d.y0})`);
+const treemapTool = d3.select("#treemap")
+    .append('div')
+    .attr('class', 'd3-tooltip')
+    .style('position', 'absolute')
+    .style('z-index', '10')
+    .style('visibility', 'hidden')
+    .style('padding', '10px')
+    .style('background', 'rgba(0,0,0,0.6)')
+    .style('border-radius', '4px')
+    .style('color', '#fff')
+    .style('left', "0px")
+    .style('top', "0px")
+    .text('');
 
 const format = d3.format(",d");
-  leaf.append("title")
-      .text(d => `[${d.data.mainGenre}]\n${d.ancestors().reverse().map(d => d.data.director).join("")}\n$${format(d.value)}M`);
-
-leaf.append("rect")
-      .attr("id", d => (d.leafUid = generateUniqueId()))
-      .attr("fill", d => { while (d.depth > 1) d = d.parent; return color(d.data.mainGenre); })
-      .attr("fill-opacity", 0.6)
-      .attr("width", d => d.x1 - d.x0)
-      .attr("height", d => d.y1 - d.y0);
-
-leaf.append("clipPath")
-      .attr("id", d => (d.clipUid = generateUniqueId()))
-    .append("use")
-      .attr("xlink:href", d => d.leafUid.href);
-
-const hide = () => {
-    const div = document.getElementById("highlight");
-    div.innerHTML = "";
-    div.style.display = "none";
-};
-
-const show = data => {
-    const div = document.getElementById("highlight");
-    div.innerHTML = `Director(s): ${data.director}<br>Main Genre: ${data.mainGenre}<br>Average Gross Income: $${format(data.averageGross)}M<br>Movies made in genre: ${data.moviesMade}`;
-    div.style.display = "block";
-};
-
-leaf.on("click", function(d) {
-    const clickedRect = d3.select(this).select("rect");
-    const isHighlighted = clickedRect.attr("fill-opacity") === "1";
-    leaf.selectAll("rect").attr("fill-opacity", 0.6);
-    if (!isHighlighted) {
-        clickedRect.attr("fill-opacity", 1);
-        show(d.target.__data__.data);
-    } else hide();
-});
-
-const textLeaf = treemap.selectAll("g").filter(d => {
-    return ((d.x1 - d.x0) > 50 && (d.y1 - d.y0) > 32);
-});
-textLeaf.append("text")
-      .attr("clip-path", d => d.clipUid)
-    .selectAll("tspan")
-    .data(d => d.data.director.split(/(?=[A-Z][a-z])|\s+/g).concat(`$${format(d.value)}M`))
-    .join("tspan")
-      .attr("x", 3)
-      .attr("y", (d, i, nodes) => `${(i === nodes.length - 1) * 0.3 + 1.1 + i * 0.9}em`)
-      .attr("fill-opacity", (d, i, nodes) => i === nodes.length - 1 ? 0.7 : null)
-      .text(d => d);
-
-const smallLeaf = treemap.selectAll("g").filter(d => {
-    return ((d.x1 - d.x0) <= 50 || (d.y1 - d.y0) <= 32);
-});
-smallLeaf.append("text")
-      .attr("clip-path", d => d.clipUid)
-    .selectAll("tspan")
-    .data(d => ['...'])
-    .join("tspan")
-      .attr("x", 3)
-      .attr("y", (d, i, nodes) => `${(i === nodes.length - 1) * 0.3 + 1.1 + i * 0.9}em`)
-      .attr("fill-opacity", (d, i, nodes) => i === nodes.length - 1 ? 0.7 : null)
-      .text(d => d);
+buildTreemap(root.leaves());
 
 Object.assign(treemap.node(), {scales: {color}});
 let legend = Swatches(color);
@@ -533,6 +556,7 @@ const displayingActor = true;
 const slider = document.getElementById("slider");
 slider.max = maxMovies;
 const value = document.getElementById("value");
+const lspan = document.getElementById("lspan");
 
 slider.addEventListener("input", function() {
     const filterValue = +this.value;
@@ -550,72 +574,76 @@ const filterNodesByMoviesMade = minMoviesMade => {
         .sum(d => d.averageGross)
         .sort((a, b) => b.value - a.value);
     const filteredLeaves = root.leaves();
-    
     treemapLayout(root);
-    treemap.selectAll("g").remove();
-    const leaf = treemap.selectAll("g")
-        .data(filteredLeaves, d => d.data.director)
-        .join("g")
-        .attr("transform", d => `translate(${d.x0},${d.y0})`);
-    leaf.append("title")
-        .text(d => `[${d.data.mainGenre}]\n${d.data.director}\n$${format(d.value)}M`);
-    leaf.append("rect")
-        .attr("id", d => (d.leafUid = generateUniqueId()))
-        .attr("fill", d => { while (d.depth > 1) d = d.parent; return color(d.data.mainGenre); })
-        .attr("fill-opacity", 0.6)
-        .attr("width", d => d.x1 - d.x0)
-        .attr("height", d => d.y1 - d.y0);
-    leaf.append("clipPath")
-        .attr("id", d => (d.clipUid = generateUniqueId()))
-        .append("use")
-        .attr("xlink:href", d => d.leafUid.href);
-    leaf.on("click", function(d) {
-        const clickedRect = d3.select(this).select("rect");
-        const isHighlighted = clickedRect.attr("fill-opacity") === "1";
-        leaf.selectAll("rect").attr("fill-opacity", 0.6);
-        if (!isHighlighted) {
-            clickedRect.attr("fill-opacity", 1);
-            show(d.target.__data__.data);
-        } else hide();
-    });
-    const textLeaf = treemap.selectAll("g").filter(d => {
-        return ((d.x1 - d.x0) > 50 && (d.y1 - d.y0) > 32);
-    });
-    textLeaf.append("text")
-        .attr("clip-path", d => d.clipUid)
-        .selectAll("tspan")
-        .data(d => d.data.director.split(/(?=[A-Z][a-z])|\s+/g).concat(`$${format(d.value)}M`))
-        .join("tspan")
-        .attr("x", 3)
-        .attr("y", (d, i, nodes) => `${(i === nodes.length - 1) * 0.3 + 1.1 + i * 0.9}em`)
-        .attr("fill-opacity", (d, i, nodes) => i === nodes.length - 1 ? 0.7 : null)
-        .text(d => d);
-
-    const smallLeaf = treemap.selectAll("g").filter(d => {
-        return ((d.x1 - d.x0) <= 50 || (d.y1 - d.y0) <= 32);
-    });
-    smallLeaf.append("text")
-        .attr("clip-path", d => d.clipUid)
-        .selectAll("tspan")
-        .data(d => ['...'])
-        .join("tspan")
-        .attr("x", 3)
-        .attr("y", (d, i, nodes) => `${(i === nodes.length - 1) * 0.3 + 1.1 + i * 0.9}em`)
-        .attr("fill-opacity", (d, i, nodes) => i === nodes.length - 1 ? 0.7 : null)
-        .text(d => d);
+    buildTreemap(filteredLeaves);
 }
+
+const actorButton = d3.select("#treeActor");
+const directorButton = d3.select("#treeDirector");
+directorButton.style("background-color", activeButtonColor);
+actorButton.style("background-color", defaultButtonColor);
+
+actorButton.on("click", function () {
+    if (!actorSelected) {
+        actorSelected = true;
+        actorButton.style("background-color", activeButtonColor);
+        directorButton.style("background-color", defaultButtonColor);
+        groupData('Actors');
+        slider.max = maxMovies;
+        slider.value = 1;
+        value.textContent = 1;
+        lspan.innerHTML = 'Actor';
+        filterNodesByMoviesMade(1);
+    }
+});
+
+directorButton.on("click", function () {
+    if (actorSelected) {
+        actorSelected = false;
+        actorButton.style("background-color", defaultButtonColor);
+        directorButton.style("background-color", activeButtonColor);
+        groupData('Director');
+        slider.max = maxMovies;
+        slider.value = 1;
+        value.textContent = 1;
+        lspan.innerHTML = 'Director';
+        filterNodesByMoviesMade(1);
+    }
+});
 ```
 
 <br>
-<h2>Most successful directors per movie genre</h2>
+<div style="position: relative; display: flex; flex-direction: row;">
+    <h2>Most successful</h2>
+    <button id="treeDirector" style="margin-left: 10px;
+                    margin-right: 3px; 
+                    padding-left: 15px;
+                    padding-right: 15px;
+                    font-size: 25px; 
+                    font-family: Volkhov;
+                    border-style: none;
+                    border-radius: 20px;
+                    color: black;
+                    background-color: #eec42d">Director</button>
+    <button id="treeActor" style="margin-left: 5px;
+                    margin-right: 3px; 
+                    padding-left: 15px;
+                    padding-right: 15px;
+                    font-size: 25px; 
+                    font-family: Volkhov;
+                    border-style: none;
+                    border-radius: 20px;
+                    color: black;
+                    background-color: #437c90">Actor</button>
+    <h2 style="margin-left: 10px;">per movie genre</h2>
+</div>
 <div>${legend}</div>
-<div id="highlight" style="display: none;"></div>
 <div id="sliderDiv">
-  <label for="slider">Filter By Number Of Movies Made In Genre:</label>
+  <label for="slider">Minimum <span id="lspan">Director</span> Movie Count In Genre:</label>
   <input type="range" min="1" max="1" value="0" id="slider">
   <span id="value">1</span>
 </div>
-<div>${treemap}</div>
+<div id="treemap">${treemap}</div>
 
 <br>
 <div style="position: relative; display: flex; flex-direction: row;">
@@ -890,7 +918,6 @@ function transissionToOtherData(filteredData) {
         .scale(yScale);
 
     let circles = graph.selectAll("circle").data(filteredData);
-    console.log(graph.selectAll("circle").data(filteredData))
     // Update existing circles
     circles
         .transition()
@@ -1083,7 +1110,7 @@ updateChart(currentYear);
 <br>
 <h2>Average box-office per rating</h2>
 For censor ratings "12" and "18+" the box-office is unknown. The box-office is in million dollars.
-<div id="averageBoxOffice"></div>
+<div id="boxplots"></div>
 
 ```js
 var censorBoxOffice = {};
@@ -1099,18 +1126,26 @@ groupedDataByCensor.forEach((movies, censor) => {
 });
 
 const combinedArray = censorBoxOffice['Not Rated'].concat(censorBoxOffice['Unrated']);
-const average = d3.mean(combinedArray);
-censorBoxOffice['Not Rated'] = [];
-censorBoxOffice['Not Rated'].push(average);
+censorBoxOffice['Not Rated'] = combinedArray
 
 const order = ['Not Rated', '(Banned)', 'All', 'U', 'G', 'U/A', 'PG', 'PG-13', '7', 'UA 7+', 'UA', '12+', '13', 'UA 13+', '15+', '16', 'UA 16+', 'R', 'NC-17', '18', 'M/PG', 'A']
 const boxOfficeData = [];
 for (const censor of order) {
-    console.log(censor)
     if (censor !== 'Unrated' && censor !== '12' && censor !== '18+') {
+        var data_sorted = censorBoxOffice[censor].sort(d3.ascending)
+        var q1 = d3.quantile(data_sorted, .25)
+        var median = d3.quantile(data_sorted, .5)
+        var q3 = d3.quantile(data_sorted, .75)
+        var interQuantileRange = q3 - q1
+        var min = q1 - 1.5 * interQuantileRange
+        var max = q1 + 1.5 * interQuantileRange
         boxOfficeData.push({
-            "Censor": censor,
-            "Value": d3.mean(censorBoxOffice[censor])
+            censor: censor,
+            minimum: min,
+            maximum: max,
+            q1: q1,
+            median: median,
+            q3: q3
         });
     }
 }
@@ -1118,13 +1153,14 @@ for (const censor of order) {
 ```
 
 ```js
-// set the dimensions and margins of the graph
-var margin = {top: 30, right: 30, bottom: 70, left: 60};
-const width = 900;
-const height = 800;
+let global_max = d3.max(boxOfficeData, d => d.maximum)
+let global_min = d3.min(boxOfficeData, d => d.minimum)
+var margin = {top: 10, right: 30, bottom: 30, left: 60}
+const width = 900
+const height = 1000;
 
 // append the svg object to the body of the page
-var svg = d3.select("#averageBoxOffice")
+var svg = d3.select("#boxplots")
   .append("svg")
     .attr("width", width + margin.left + margin.right)
     .attr("height", height + margin.top + margin.bottom)
@@ -1132,57 +1168,98 @@ var svg = d3.select("#averageBoxOffice")
     .attr("transform",
           "translate(" + margin.left + "," + margin.top + ")");
 
+var tooltip = d3.select("#boxplots").append("div")
+    .attr("class", "tooltip")
+    .style("opacity", 0);
 
-// X axis
-var x = d3.scaleLinear()
-    .domain([0, 250])
-    .range([ 0, width ]);
-    
-svg.append("g")
-  .attr("transform", "translate(0," + height + ")")
-  .call(d3.axisBottom(x))
-  .selectAll("text")
-    .attr("transform", "translate(-10,0)rotate(-45)")
-    .style("text-anchor", "end");
-
-svg.append("text")
-    .attr("class", "x label")
-    .attr("text-anchor", "end")
-    .attr("x", 600)
-    .attr("y", height + 55)
-    .text("Average box-office (in million dollars)")
-    .style("font-size", "20px")
-    .style("fill", "white");
-
-// Add Y axis
 var y = d3.scaleBand()
-    .domain(boxOfficeData.map(function(d) { return d.Censor; }))
-    .range([ height, 0])
-    .padding(0.2);
+    .range([height, 0 ])
+    .domain(order)
+    .padding(.4);
+  
 svg.append("g")
-  .call(d3.axisLeft(y));
+    .call(d3.axisLeft(y).tickSize(0))
+    .select(".domain").remove()
 
-// Bars
-let bars = svg.selectAll("mybar")
+// Show the X scale
+var x = d3.scaleLinear()
+.domain([global_min, global_max])
+.range([0, width])
+
+svg.append("g")
+    .attr("transform", "translate(0," + height + ")")
+    .call(d3.axisBottom(x).ticks(5))
+
+svg.selectAll("vertLines")
     .data(boxOfficeData)
     .enter()
-    .append("g")
-    
-bars.append("rect")
-    .attr("class", "bar")
-    .attr("x", x(0))
-    .attr("y", function(d) { return y(d.Censor); } )
-    .attr("width", function(d) { return x(d.Value); })
-    .attr("height",function(d) { return y.bandwidth(); } )
-    .attr("fill", "#F5C518");
+    .append("line")
+      .attr("x1", d => x(d.minimum))
+      .attr("x2", d => x(d.maximum))
+      .attr("y1", d => y(d.censor) + y.bandwidth()/2)
+      .attr("y2", d => y(d.censor) + y.bandwidth()/2)
+      .attr("stroke", "white")
+      .style("width", 40)
 
-bars.append("text")
-    .attr("class", "label")
-    .attr("x", function(d) { return x(d.Value) + 35; })
-    .attr("y", function(d) { return y(d.Censor) + y.bandwidth() * (0.5 + 0.1); }) // Adjust position to be slightly above the bar
-    .attr("text-anchor", "middle")
-    .text(function(d) { return `$${d.Value.toFixed(2)}M`; })
-    .style("font-size", "12px")
-    .style("fill", "white")
-    .style("font-weight", "bold");
+// Add the tooltip
+const box_tooltip = d3.select("#boxplots")
+    .append('div')
+    .attr('class', 'd3-tooltip')
+    .style('position', 'absolute')
+    .style('z-index', '10')
+    .style('visibility', 'hidden')
+    .style('padding', '10px')
+    .style('background', 'rgba(0,0,0,1)')
+    .style('border-radius', '4px')
+    .style('color', '#fff')
+    .style('left', "0px")
+    .style('top', "0px")
+    .text('a simple tooltip');
+
+// rectangle for the main box
+svg
+.selectAll("boxes")
+.data(boxOfficeData)
+.enter()
+.append("rect")
+    .attr("x", d => x(d.q1))
+    .attr("width", d => x(d.q3)-x(d.q1) != 0 ? x(d.q3)-x(d.q1) : 2)
+    .attr("y", d => y(d.censor))
+    .attr("height", y.bandwidth())
+    .attr("stroke", "black")
+    .style("fill", "#F5C518")
+    .style("opacity", 0.3)
+    .on('mouseover', function (d, i) {
+        box_tooltip
+            .html(
+                `<h1>Rating: ${i.censor}</h1>
+                <div>Q1: $${i.q1.toFixed(2)}M</div>
+                <div>Median: $${i.median.toFixed(2)}M</div>
+                <div>Q3: $${i.q3.toFixed(2)}M</div>`
+            )
+            .style('visibility', 'visible');
+    })
+    .on('mousemove', function (evt, d) {
+        const mx = evt["layerX"];
+        const my = evt["layerY"];
+        box_tooltip
+            .style("left", (mx + 15) + "px")
+            .style("top", (my + 15) + "px")
+    })
+    .on('mouseout', function () {
+        box_tooltip.html(``).style('visibility', 'hidden');
+    });
+
+// Show the median
+svg
+.selectAll("medianLines")
+.data(boxOfficeData)
+.enter()
+.append("line")
+  .attr("y1", d => y(d.censor))
+  .attr("y2", d => y(d.censor) + y.bandwidth())
+  .attr("x1", d => x(d.median))
+  .attr("x2", d => x(d.median))
+  .attr("stroke", "white")
+  .style("width", 80)
 ```

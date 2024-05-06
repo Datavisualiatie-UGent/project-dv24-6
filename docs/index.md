@@ -17,11 +17,25 @@ const movies = FileAttachment("movies.csv").csv({typed: true});
 
 <br>
 <div style="position: relative; display: flex; flex-direction: row;">
-    <h2>Gross income vs score</h2>
+    <h2>Gross income vs score in:</h2>
+<select id="GrossGenreSelect" style="margin-left: 10px;
+                    margin-right: 3px; 
+                    padding-left: 15px;
+                    padding-right: 15px;
+                    font-size: 25px; 
+                    font-family: Volkhov;
+                    border-style: none;
+                    border-radius: 20px;
+                    "></select>
 </div>
 <div id="incomescore" style="position: relative; display: flex; flex-direction: column">
     <label for="name">Search Movie:</label>
     <input type="text" id="name" style="border-radius: 10px; padding: 7px">
+    <div style="display: flex; flex-direction: row; margin-top: 10px;">
+        <label style="margin-right: 10px" for="myRange">Range of release year:</label>
+        <input type="range" id="GrossRange" min="0" max="10" step="0.1" value="0" style="width: 500px">
+        <label id="rangeGross"></label>
+    </div>
 </div>
 
 
@@ -31,7 +45,9 @@ import * as Plot from "npm:@observablehq/plot";
 
 var movieScores = {};
 var movieIncome = {};
-
+var movieYear = {};
+var movieGenre = {};
+var GrossGenres = new Set(["All Movies"]);
 movies.forEach(movie => {
     let movieName = movie.Movie_Title;
     let gross = movie.Total_Gross.trim();
@@ -39,23 +55,41 @@ movies.forEach(movie => {
         movieIncome[movieName] = parseFloat(gross.substring(1, gross.length - 1));
         let score = movie.Rating;   
         movieScores[movieName] = parseFloat(score);
+        movieYear[movieName] = parseInt(movie.Year);
+        movieGenre[movieName] = []
+        movieGenre[movieName].push(movie.main_genre);
+        for(let side of movie.side_genre.split(',')){
+            side = side.trim();
+            movieGenre[movieName].push(side);
+        }
+    }
+    GrossGenres.add(movie.main_genre);
+    for(let side of movie.side_genre.split(',')){
+        side = side.trim();
+        GrossGenres.add(side);
     }
 });
 
 const moviedata = [];
-        console.log(movieScores);
 for (const movie in movieScores) {
 
     moviedata.push({
         "movie": movie,
         "score": movieScores[movie],
-        "income": movieIncome[movie]
+        "income": movieIncome[movie],
+        "Year": movieYear[movie],
+        "genres": movieGenre[movie]
     });
 }
 ```
 
 
 ```js
+const [GrossEarliestYear, GrossLatestYear] = d3.extent(movies, d => d.Year);
+var GrosscurrentYear = GrossEarliestYear;
+var GrosscurrentSearch = "";
+var GrosscurrentGenre = "All Movies";
+
 const width = 900;
 const height = 800;
 const staticColor = '#437c90';
@@ -64,6 +98,13 @@ const padding = {top: 20, left: 30, right: 40, bottom: 30};
 let prevXScale = [d3.scaleLinear()
         .domain([0, d3.max(moviedata, d => d.income)])
         .range([padding.left, width - padding.right])];
+
+const select = d3.select("#GrossGenreSelect");
+
+select.selectAll("option")
+    .data(GrossGenres)
+    .enter().append("option")
+    .text(d => d);
 
 // Add the tooltip
 const tooltip = d3.select("#incomescore")
@@ -89,18 +130,44 @@ const graph = d3.select("#incomescore")
       .attr("width", width)
       .attr("height", height)
       .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif; position: relative")
+
+function GrossFilter() {
+    let filteredData = moviedata.filter(d=>d.Year >= GrosscurrentYear);
+    if(GrosscurrentGenre != "All Movies"){
+        filteredData = filteredData.filter(d=>d.genres.includes(GrosscurrentGenre));
+    }
+    let searchData = filteredData.filter(d => d.movie.toLowerCase().includes(GrosscurrentSearch.toLowerCase()));
+    if (GrosscurrentSearch === "") {
+        searchData = filteredData;
+    }
+    transissionToSelectMovies(searchData);
+}
+
+select.on("change", function () {
+    GrosscurrentGenre = this.value;
+    GrossFilter();
+});
+
 const search = d3.select("#name")
     .on("input", function() {
-        const value = this.value;
-        console.log(value);
-        let filteredData = moviedata.filter(d => d.movie.toLowerCase().includes(value.toLowerCase()));
-        if (value === "") {
-            filteredData = moviedata;
-        }
-        transissionToSelectMovies(filteredData);
+        GrosscurrentSearch = this.value;
+        GrossFilter();
     });
 
 
+const YearText = d3.select("#rangeGross")
+    .text(`${GrosscurrentYear}-${GrossLatestYear}`);
+
+const Yearslider = d3.select("#GrossRange")
+    .attr("min", EarliestYear)
+    .attr("max", LatestYear)
+    .attr("value", EarliestYear)
+    .attr("step", 1)
+    .on("input", function () {
+        GrosscurrentYear = this.value;
+        GrossFilter();
+        YearText.text(`${GrosscurrentYear}-${LatestYear}`);
+    });
 const xScale = d3.scaleLinear()
                 .domain([0, d3.max(moviedata, d => d.income)])
                 .range([padding.left, width - padding.right]);
@@ -199,7 +266,6 @@ graph.append("text")
     .text("Movie Score");
 
 function transissionToSelectMovies(filteredData) {
-
     const xScale = d3.scaleLinear()
         .domain([0, d3.max(filteredData, d => d.income)])
         .range([padding.left, width - padding.right]);
@@ -218,15 +284,13 @@ function transissionToSelectMovies(filteredData) {
         .attr("d", d => createStarPath(xScale(d.income), yScale(d.score),0.5))
     path.enter()
         .append("path")
-        .attr("d", d => createStarPath(xScale(d.income), yScale(d.score),0.3))
-        .attr("fill", "hotpink") // Set initial fill for newly appended circles
-        .transition()
         .attr("d", d => createStarPath(xScale(d.income), yScale(d.score),0.5))
         .attr("fill", hoverColor)
-
         path.exit()
             .transition()
-                  .attr("d",d=>d===null?d:createStarPath(prevXScale[0](d.income),yScale(d.score),0.1))
+                  .attr("d",d=> 
+                      d === null ? d : createStarPath(prevXScale[0](d.income), yScale(d.score), 0.1)
+                  )
                   
             .remove();
     prevXScale[0]=xScale;
@@ -238,7 +302,7 @@ function transissionToSelectMovies(filteredData) {
         .call(yAxis);
     
     path = graph.selectAll("path"); // Re-select all circles after updating
-    path.on('mouseover', function (d, i) {
+    path.filter(d=>d!==null).on('mouseover', function (d, i) {
         tooltip
             .html(
               `<h1>${i.movie}</h1>
@@ -343,99 +407,24 @@ function Swatches(color, {
 
 
 ```js
-let groupedData;
-let maxMovies;
-let totalGrossData;
-let groupedByGenre;
+let groupedData = d3.group(movies, d => d.main_genre, d => d.Director);
 const color = d3.scaleOrdinal([...new Set(movies.map(d => d.main_genre))], d3.schemeSet3);
-const groupData = by => {
-    groupedData = d3.group(movies, d => d.main_genre, d => d[by]);
-    totalGrossData = [];
-    maxMovies = 0;
-    groupedData.forEach((directors, mainGenre) => {
-        directors.forEach((movies, director) => {
-            const totalGross = parseFloat(d3.sum(movies, d => parseFloat(d.Total_Gross.match(/[0-9.]+/))).toFixed(2));
-            if (totalGross > 0) {
-                const moviesMade = movies.length;
-                if (moviesMade > maxMovies) maxMovies = moviesMade;
-                const averageGross = (totalGross / moviesMade).toFixed(2);
-                if (director.startsWith('Directors:')) director = director.split('Directors:')[1];
-                totalGrossData.push({ mainGenre, director, averageGross, moviesMade });
-            }
-        });
+let totalGrossData = [];
+let maxMovies = 0;
+groupedData.forEach((directors, mainGenre) => {
+    directors.forEach((movies, director) => {
+        const totalGross = parseFloat(d3.sum(movies, d => parseFloat(d.Total_Gross.match(/[0-9.]+/))).toFixed(2));
+        if (totalGross > 0) {
+            const moviesMade = movies.length;
+            if (moviesMade > maxMovies) maxMovies = moviesMade;
+            const averageGross = totalGross / moviesMade;
+            if (director.startsWith('Directors:')) director = director.split('Directors:')[1];
+            totalGrossData.push({ mainGenre, director, averageGross, moviesMade });
+        }
     });
-    groupedByGenre = d3.group(totalGrossData, d => d.mainGenre);
-};
-groupData('Director');
-
+});
 const width = 900;
 const height = 800;
-const buildTreemap = leaves => {
-    treemap.selectAll("g").remove();
-    const leaf = treemap.selectAll("g")
-        .data(leaves, d => d.data.director)
-        .join("g")
-        .attr("transform", d => `translate(${d.x0},${d.y0})`);
-    leaf.append("rect")
-        .attr("id", d => (d.leafUid = generateUniqueId()))
-        .attr("fill", d => { while (d.depth > 1) d = d.parent; return color(d.data.mainGenre); })
-        .attr("fill-opacity", 0.6)
-        .attr("width", d => d.x1 - d.x0)
-        .attr("height", d => d.y1 - d.y0);
-    leaf.append("clipPath")
-        .attr("id", d => (d.clipUid = generateUniqueId()))
-        .append("use")
-        .attr("xlink:href", d => d.leafUid.href);
-    leaf.on("mouseover", function(d) {
-        const clickedRect = d3.select(this).select("rect");
-        const isHighlighted = clickedRect.attr("fill-opacity") === "1";
-        if (!isHighlighted) {
-            leaf.selectAll("rect").attr("fill-opacity", 0.6);
-            clickedRect.attr("fill-opacity", 1);
-        }
-        const data = clickedRect._groups[0][0].__data__.data;
-        treemapTool.html(`<h1>${data.mainGenre}</h1>
-        <div>${actorSelected ? 'Actor(s)' : 'Director(s)'}: ${data.director}</div>
-        <div>Average Income Per Movie: $${data.averageGross}M</div>
-        <div>Movies Made In Genre: ${data.moviesMade}</div>`).style('visibility', 'visible');
-    }).on('mousemove', function (evt, d) {
-        const mx = evt["layerX"];
-        const my = evt["layerY"];
-        treemapTool
-            .style("left", (mx + 15) + "px")
-            .style("top", (my + 15) + "px")
-    })
-    .on('mouseout', function () {
-        leaf.selectAll("rect").attr("fill-opacity", 0.6);
-        treemapTool.html(``).style('visibility', 'hidden');
-    });
-    const textLeaf = treemap.selectAll("g").filter(d => {
-        return ((d.x1 - d.x0) > 50 && (d.y1 - d.y0) > 32);
-    });
-    textLeaf.append("text")
-        .attr("clip-path", d => d.clipUid)
-        .selectAll("tspan")
-        .data(d => [`$${format(d.value)}M`])
-        .join("tspan")
-        .attr("x", 3)
-        .attr("y", (d, i, nodes) => `${1.1 + i * 0.9}em`)
-        .attr("font-size", 13)
-        .attr("font-weight", "bold")
-        .attr("fill-opacity", (d, i, nodes) => null)
-        .text(d => d);
-    const smallLeaf = treemap.selectAll("g").filter(d => {
-        return ((d.x1 - d.x0) <= 50 || (d.y1 - d.y0) <= 32);
-    });
-    smallLeaf.append("text")
-        .attr("clip-path", d => d.clipUid)
-        .selectAll("tspan")
-        .data(d => ['...'])
-        .join("tspan")
-        .attr("x", 3)
-        .attr("y", (d, i, nodes) => `${(i === nodes.length - 1) * 0.3 + 1.1 + i * 0.9}em`)
-        .attr("fill-opacity", (d, i, nodes) => i === nodes.length - 1 ? 0.7 : null)
-        .text(d => d);
-};
 
 let treemapLayout = d3.treemap()
     .tile(d3.treemapSquarify)
@@ -443,6 +432,7 @@ let treemapLayout = d3.treemap()
     .padding(1)
     .round(true);
 
+let groupedByGenre = d3.group(totalGrossData, d => d.mainGenre);
 let top10PerGenre = new Map();
 groupedByGenre.forEach((values, genre) => {
     let sortedValues = values.slice().sort((a, b) => b.averageGross - a.averageGross);
@@ -453,7 +443,7 @@ let root = d3.hierarchy({children: Array.from(top10PerGenre, ([key, value]) => (
     .sort((a, b) => b.value - a.value);
 
 treemapLayout(root);
-let actorSelected = false;
+
 let counter = 0;
 function generateUniqueId() {
     return `id_${counter++}`;
@@ -465,22 +455,74 @@ let treemap = d3.create("svg")
   .attr("height", height)
   .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif;");
 
-const treemapTool = d3.select("#treemap")
-    .append('div')
-    .attr('class', 'd3-tooltip')
-    .style('position', 'absolute')
-    .style('z-index', '10')
-    .style('visibility', 'hidden')
-    .style('padding', '10px')
-    .style('background', 'rgba(0,0,0,0.6)')
-    .style('border-radius', '4px')
-    .style('color', '#fff')
-    .style('left', "0px")
-    .style('top', "0px")
-    .text('');
+const leaf = treemap.selectAll("g")
+    .data(root.leaves())
+    .join("g")
+    .attr("transform", d => `translate(${d.x0},${d.y0})`);
 
 const format = d3.format(",d");
-buildTreemap(root.leaves());
+  leaf.append("title")
+      .text(d => `[${d.data.mainGenre}]\n${d.ancestors().reverse().map(d => d.data.director).join("")}\n$${format(d.value)}M`);
+
+leaf.append("rect")
+      .attr("id", d => (d.leafUid = generateUniqueId()))
+      .attr("fill", d => { while (d.depth > 1) d = d.parent; return color(d.data.mainGenre); })
+      .attr("fill-opacity", 0.6)
+      .attr("width", d => d.x1 - d.x0)
+      .attr("height", d => d.y1 - d.y0);
+
+leaf.append("clipPath")
+      .attr("id", d => (d.clipUid = generateUniqueId()))
+    .append("use")
+      .attr("xlink:href", d => d.leafUid.href);
+
+const hide = () => {
+    const div = document.getElementById("highlight");
+    div.innerHTML = "";
+    div.style.display = "none";
+};
+
+const show = data => {
+    const div = document.getElementById("highlight");
+    div.innerHTML = `Director(s): ${data.director}<br>Main Genre: ${data.mainGenre}<br>Average Gross Income: $${format(data.averageGross)}M<br>Movies made in genre: ${data.moviesMade}`;
+    div.style.display = "block";
+};
+
+leaf.on("click", function(d) {
+    const clickedRect = d3.select(this).select("rect");
+    const isHighlighted = clickedRect.attr("fill-opacity") === "1";
+    leaf.selectAll("rect").attr("fill-opacity", 0.6);
+    if (!isHighlighted) {
+        clickedRect.attr("fill-opacity", 1);
+        show(d.target.__data__.data);
+    } else hide();
+});
+
+const textLeaf = treemap.selectAll("g").filter(d => {
+    return ((d.x1 - d.x0) > 50 && (d.y1 - d.y0) > 32);
+});
+textLeaf.append("text")
+      .attr("clip-path", d => d.clipUid)
+    .selectAll("tspan")
+    .data(d => d.data.director.split(/(?=[A-Z][a-z])|\s+/g).concat(`$${format(d.value)}M`))
+    .join("tspan")
+      .attr("x", 3)
+      .attr("y", (d, i, nodes) => `${(i === nodes.length - 1) * 0.3 + 1.1 + i * 0.9}em`)
+      .attr("fill-opacity", (d, i, nodes) => i === nodes.length - 1 ? 0.7 : null)
+      .text(d => d);
+
+const smallLeaf = treemap.selectAll("g").filter(d => {
+    return ((d.x1 - d.x0) <= 50 || (d.y1 - d.y0) <= 32);
+});
+smallLeaf.append("text")
+      .attr("clip-path", d => d.clipUid)
+    .selectAll("tspan")
+    .data(d => ['...'])
+    .join("tspan")
+      .attr("x", 3)
+      .attr("y", (d, i, nodes) => `${(i === nodes.length - 1) * 0.3 + 1.1 + i * 0.9}em`)
+      .attr("fill-opacity", (d, i, nodes) => i === nodes.length - 1 ? 0.7 : null)
+      .text(d => d);
 
 Object.assign(treemap.node(), {scales: {color}});
 let legend = Swatches(color);
@@ -490,7 +532,6 @@ const displayingActor = true;
 const slider = document.getElementById("slider");
 slider.max = maxMovies;
 const value = document.getElementById("value");
-const lspan = document.getElementById("lspan");
 
 slider.addEventListener("input", function() {
     const filterValue = +this.value;
@@ -508,76 +549,72 @@ const filterNodesByMoviesMade = minMoviesMade => {
         .sum(d => d.averageGross)
         .sort((a, b) => b.value - a.value);
     const filteredLeaves = root.leaves();
+    
     treemapLayout(root);
-    buildTreemap(filteredLeaves);
+    treemap.selectAll("g").remove();
+    const leaf = treemap.selectAll("g")
+        .data(filteredLeaves, d => d.data.director)
+        .join("g")
+        .attr("transform", d => `translate(${d.x0},${d.y0})`);
+    leaf.append("title")
+        .text(d => `[${d.data.mainGenre}]\n${d.data.director}\n$${format(d.value)}M`);
+    leaf.append("rect")
+        .attr("id", d => (d.leafUid = generateUniqueId()))
+        .attr("fill", d => { while (d.depth > 1) d = d.parent; return color(d.data.mainGenre); })
+        .attr("fill-opacity", 0.6)
+        .attr("width", d => d.x1 - d.x0)
+        .attr("height", d => d.y1 - d.y0);
+    leaf.append("clipPath")
+        .attr("id", d => (d.clipUid = generateUniqueId()))
+        .append("use")
+        .attr("xlink:href", d => d.leafUid.href);
+    leaf.on("click", function(d) {
+        const clickedRect = d3.select(this).select("rect");
+        const isHighlighted = clickedRect.attr("fill-opacity") === "1";
+        leaf.selectAll("rect").attr("fill-opacity", 0.6);
+        if (!isHighlighted) {
+            clickedRect.attr("fill-opacity", 1);
+            show(d.target.__data__.data);
+        } else hide();
+    });
+    const textLeaf = treemap.selectAll("g").filter(d => {
+        return ((d.x1 - d.x0) > 50 && (d.y1 - d.y0) > 32);
+    });
+    textLeaf.append("text")
+        .attr("clip-path", d => d.clipUid)
+        .selectAll("tspan")
+        .data(d => d.data.director.split(/(?=[A-Z][a-z])|\s+/g).concat(`$${format(d.value)}M`))
+        .join("tspan")
+        .attr("x", 3)
+        .attr("y", (d, i, nodes) => `${(i === nodes.length - 1) * 0.3 + 1.1 + i * 0.9}em`)
+        .attr("fill-opacity", (d, i, nodes) => i === nodes.length - 1 ? 0.7 : null)
+        .text(d => d);
+
+    const smallLeaf = treemap.selectAll("g").filter(d => {
+        return ((d.x1 - d.x0) <= 50 || (d.y1 - d.y0) <= 32);
+    });
+    smallLeaf.append("text")
+        .attr("clip-path", d => d.clipUid)
+        .selectAll("tspan")
+        .data(d => ['...'])
+        .join("tspan")
+        .attr("x", 3)
+        .attr("y", (d, i, nodes) => `${(i === nodes.length - 1) * 0.3 + 1.1 + i * 0.9}em`)
+        .attr("fill-opacity", (d, i, nodes) => i === nodes.length - 1 ? 0.7 : null)
+        .text(d => d);
 }
-
-const actorButton = d3.select("#treeActor");
-const directorButton = d3.select("#treeDirector");
-directorButton.style("background-color", activeButtonColor);
-actorButton.style("background-color", defaultButtonColor);
-
-actorButton.on("click", function () {
-    if (!actorSelected) {
-        actorSelected = true;
-        actorButton.style("background-color", activeButtonColor);
-        directorButton.style("background-color", defaultButtonColor);
-        groupData('Actors');
-        slider.max = maxMovies;
-        slider.value = 1;
-        value.textContent = 1;
-        lspan.innerHTML = 'Actor';
-        filterNodesByMoviesMade(1);
-    }
-});
-
-directorButton.on("click", function () {
-    if (actorSelected) {
-        actorSelected = false;
-        actorButton.style("background-color", defaultButtonColor);
-        directorButton.style("background-color", activeButtonColor);
-        groupData('Director');
-        slider.max = maxMovies;
-        slider.value = 1;
-        value.textContent = 1;
-        lspan.innerHTML = 'Director';
-        filterNodesByMoviesMade(1);
-    }
-});
 ```
 
 <br>
-<div style="position: relative; display: flex; flex-direction: row;">
-    <h2>Most successful</h2>
-    <button id="treeDirector" style="margin-left: 10px;
-                    margin-right: 3px; 
-                    padding-left: 15px;
-                    padding-right: 15px;
-                    font-size: 25px; 
-                    font-family: Volkhov;
-                    border-style: none;
-                    border-radius: 20px;
-                    color: black;
-                    background-color: #eec42d">Director</button>
-    <button id="treeActor" style="margin-left: 5px;
-                    margin-right: 3px; 
-                    padding-left: 15px;
-                    padding-right: 15px;
-                    font-size: 25px; 
-                    font-family: Volkhov;
-                    border-style: none;
-                    border-radius: 20px;
-                    color: black;
-                    background-color: #437c90">Actor</button>
-    <h2 style="margin-left: 10px;">per movie genre</h2>
-</div>
+<h2>Most successful directors per movie genre</h2>
 <div>${legend}</div>
+<div id="highlight" style="display: none;"></div>
 <div id="sliderDiv">
-  <label for="slider">Minimum <span id="lspan">Director</span> Movie Count In Genre:</label>
+  <label for="slider">Filter By Number Of Movies Made In Genre:</label>
   <input type="range" min="1" max="1" value="0" id="slider">
   <span id="value">1</span>
 </div>
-<div id="treemap">${treemap}</div>
+<div>${treemap}</div>
 
 <br>
 <div style="position: relative; display: flex; flex-direction: row;">
@@ -852,6 +889,7 @@ function transissionToOtherData(filteredData) {
         .scale(yScale);
 
     let circles = graph.selectAll("circle").data(filteredData);
+    console.log(graph.selectAll("circle").data(filteredData))
     // Update existing circles
     circles
         .transition()

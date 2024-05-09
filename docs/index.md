@@ -497,8 +497,8 @@ for (const censor of order) {
         var median = d3.quantile(data_sorted, .5)
         var q3 = d3.quantile(data_sorted, .75)
         var interQuantileRange = q3 - q1
-        var min = q1 - 1.5 * interQuantileRange
-        var max = q1 + 1.5 * interQuantileRange
+        var min = d3.min(censorBoxOffice[censor])
+        var max = d3.max(censorBoxOffice[censor])
         boxOfficeData.push({
             censor: censor,
             minimum: min,
@@ -543,7 +543,7 @@ svg.append("g")
 // Show the X scale
 var x = d3.scaleLinear()
 .domain([global_min, global_max])
-.range([0, width])
+.range([50, width])
 
 svg.append("g")
     .attr("transform", "translate(0," + height + ")")
@@ -592,9 +592,11 @@ svg
         box_tooltip
             .html(
                 `<h1>Rating: ${i.censor}</h1>
+                <div>Min: $${i.minimum.toFixed(2)}M</div>
                 <div>Q1: $${i.q1.toFixed(2)}M</div>
                 <div>Median: $${i.median.toFixed(2)}M</div>
-                <div>Q3: $${i.q3.toFixed(2)}M</div>`
+                <div>Q3: $${i.q3.toFixed(2)}M</div>
+                <div>Max: $${i.maximum.toFixed(2)}M</div>`
             )
             .style('visibility', 'visible');
     })

@@ -688,8 +688,8 @@ const directordata = loadDirectorsPerScoreAndMovieCount(movies);
 let actorSelected = true;
 const width = 1000;
 const height = 1000;
-const staticColor = '#437c90';
-const hoverColor = '#eec42d';
+const hoverColor = '#437c90';
+const staticColor = '#eec42d';
 const defaultButtonColor = "#C2C2C2";
 const activeButtonColor = "#eec42d";
 const padding = {top: 20, left: 30, right: 40, bottom: 30};
@@ -802,7 +802,7 @@ const xScale = d3.scaleLinear()
     .range([padding.left, width - padding.right]);
 
 const yScale = d3.scaleLinear()
-    .domain([0, 10])
+    .domain([d3.min(actordata, d => d.mean_score - 1), 10])
     .range([height - padding.bottom, padding.top]);
 
 const xAxis = d3.axisBottom()
@@ -891,7 +891,7 @@ function transissionToOtherData(filteredData) {
         .domain([d3.min(filteredData, d => d.movies_count), d3.max(filteredData, d => d.movies_count)])
         .range([padding.left, width - padding.right]);
     const yScale = d3.scaleLinear()
-        .domain([0, 10])
+        .domain([d3.min(filteredData, d => d.mean_score - 1), 10])
         .range([height - padding.bottom, padding.top]);
     const xAxis = d3.axisBottom()
         .scale(xScale);
@@ -910,9 +910,9 @@ function transissionToOtherData(filteredData) {
         .append("circle")
         .attr("cx", d => xScale(d.movies_count))
         .attr("cy", d => yScale(d.mean_score))
-        .attr("r", 5)
+        .attr("r", 4)
         .transition()
-        .attr("r", 5)
+        .attr("r", 4)
         .attr("fill", staticColor)
 
     circles.exit()

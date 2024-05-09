@@ -2,13 +2,23 @@
 toc: false
 theme: default
 ---
+<div style="display: flex; 
+            flex-direction: column; 
+            padding: 10px;
+            text-align: center;
+            align-items: center; height: 5%;">
+<h1>IMDB Top 5000 Movies</h1>
+</div>
 
-# IMDB Top 5000 Movies
+<div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 95%; width: 100%">
 
+<i style="font-size: 20px; width: 1000px">
 Every big movie studio wants to make a great movie that creates a lot of revenue, but where to start. There are a lot
 of options to choose from. Which genre creates the most money. Which actor attracts people to the cinema.
 We did a study on the dataset of IMDB's Top 5000 movies to create a clear conclusion. We hope this helps your studio
 for making a good and profitable movie.
+</i>
+
 
 
 ```js
@@ -650,8 +660,39 @@ svg
                     color: black;
                     background-color: #437c90">Director</button>
 </div>
+<br>
+<i style="font-size: 20px; width: 1000px">
+Genres and ratings play significant roles in a movie's success, but the cast and crew are equally vital.
+When planning a movie, you strive to bring together an exceptional cast and talented directors. 
+The scatter plot below explores the correlation between the average ratings of movies and
+the number of films in which actors have appeared. 
+This plot also provides insights into the quality of actors and directors based on these metrics.
+</i>
+<br>
+<i style="font-size: 20px; width: 1000px">
+The plot illustrates that a high average movie rating doesn't always mean that an actor has a large filmography. 
+However, it does suggest that actors with a significant number of films usually have average scores in the 6.5-7.5 range. 
+This pattern indicates that these actors often feature in movies with higher ratings but also appear in some lower-quality films. 
+Essentially, it shows they've had a diverse career with both high-quality and lower-quality movies. 
+Those with higher average ratings generally have shorter filmographies, 
+possibly because they were lucky to be in a few well-received films or because they're underrepresented in our database.
+</i>
+<br>
+<i style="font-size: 20px; width: 1000px">
+When looking at the data points that represents actors or directors with higher movie counts, 
+you'll find some of the most famous names in the industry. Actors like Samual L. Jackson and Brad Pitt and
+directors like Steven Spielberg and Christopher Nolan.
+</i>
+<br>
+<i style="font-size: 20px; width: 1000px">
+The scatter plot features a broad range of actors and directors, but you can explore specific names by using the search bar. 
+If you want to focus on more recent activity, you can filter by the time period in which they were active—for example,
+excluding those who last worked in the 1960s. Additionally, you can adjust the plot's display by setting a minimum average score and
+a minimum number of movies to concentrate on individuals with higher ratings and more extensive filmographies.
+</i>
+<br>
 
-<div id="my_dataviz" style="position: relative; display: flex; flex-direction: column;">
+<div id="my_dataviz" style="position: relative; display: flex; flex-direction: column; width: 1000px">
     <div style="display: flex; flex-direction: row; margin-top: 10px;">
         <label style="margin-top: 5px; margin-right: 10px" for="artist">Search Artist:</label>
         <input type="text" id="artist" style="border-radius: 10px; padding: 7px">
@@ -671,7 +712,10 @@ svg
         <input type="range" id="myRangeCount" min="0" max="10" step="0.1" value="0" style="width: 500px">
         <label id="rangeCountText"></label>
     </div>
+    
 </div>
+
+
 
 ```js
 import * as Plot from "npm:@observablehq/plot";
@@ -833,8 +877,8 @@ graph.selectAll("circle")
         const mx = evt["layerX"];
         const my = evt["layerY"];
         tooltip
-            .style("left", (mx + 15) + "px")
-            .style("top", (my + 15) + "px")
+            .style("left", (mx + 10) + "px")
+            .style("top", (my + 30) + "px")
     })
     .on('mouseout', function () {
         tooltip.html(``).style('visibility', 'hidden');
@@ -942,8 +986,8 @@ function transissionToOtherData(filteredData) {
             const mx = evt["layerX"];
             const my = evt["layerY"];
             tooltip
-                .style("left", (mx + 15) + "px")
-                .style("top", (my + 15) + "px")
+                .style("left", (mx + 10) + "px")
+                .style("top", (my + 30) + "px")
         })
         .on('mouseout', function () {
             tooltip.html(``).style('visibility', 'hidden');
@@ -1268,3 +1312,4 @@ directorButton.on("click", function () {
   <span id="value">1</span>
 </div>
 <div id="treemap">${treemap}</div>
+</div>

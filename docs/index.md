@@ -592,11 +592,11 @@ svg
         box_tooltip
             .html(
                 `<h1>Rating: ${i.censor}</h1>
-                <div>Min: $${i.minimum.toFixed(2)}M</div>
+                <div>Minimum: $${i.minimum.toFixed(2)}M</div>
                 <div>Q1: $${i.q1.toFixed(2)}M</div>
                 <div>Median: $${i.median.toFixed(2)}M</div>
                 <div>Q3: $${i.q3.toFixed(2)}M</div>
-                <div>Max: $${i.maximum.toFixed(2)}M</div>`
+                <div>Maximum: $${i.maximum.toFixed(2)}M</div>`
             )
             .style('visibility', 'visible');
     })
@@ -610,7 +610,6 @@ svg
     .on('mouseout', function () {
         box_tooltip.html(``).style('visibility', 'hidden');
     });
-
 // Show the median
 svg
 .selectAll("medianLines")

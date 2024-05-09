@@ -682,7 +682,7 @@ possibly because they were lucky to be in a few well-received films or because t
 <br>
 <i style="font-size: 20px; width: 1000px">
 When looking at the data points that represents actors or directors with higher movie counts, 
-you'll find some of the most famous names in the industry. Actors like Samual L. Jackson and Brad Pitt and
+you'll find some of the most famous names in the industry. Actors like Samual L. Jackson, Brad Pitt and Ryan Gosling and
 directors like Steven Spielberg and Christopher Nolan.
 </i>
 <br>
@@ -717,11 +717,12 @@ a minimum number of movies to concentrate on individuals with higher ratings and
     
 </div>
 
-
-
 ```js
 import * as Plot from "npm:@observablehq/plot";
-import {loadActorsPerScoreAndMovieCount, loadDirectorsPerScoreAndMovieCount} from "./components/average-movie-score-loader.js"
+import {
+    loadActorsPerScoreAndMovieCount,
+    loadDirectorsPerScoreAndMovieCount
+} from "./components/average-movie-score-loader.js"
 
 // Variables
 const [EarliestYear, LatestYear] = d3.extent(movies, d => d.Year);
@@ -729,6 +730,7 @@ var currentYear = EarliestYear;
 var currentSearch = "";
 var currentMinScore = 0;
 var currentMinCount = 1;
+var showingExamples = true;
 const actordata = loadActorsPerScoreAndMovieCount(movies);
 const directordata = loadDirectorsPerScoreAndMovieCount(movies);
 let actorSelected = true;
@@ -761,6 +763,48 @@ const tooltip = d3.select("#my_dataviz")
     .style('left', "0px")
     .style('top', "0px")
     .text('a simple tooltip');
+
+const ryanGoslingTooltip = d3.select("#my_dataviz")
+    .append('div')
+    .attr('class', 'd3-tooltip')
+    .style('position', 'absolute')
+    .style('z-index', '10')
+    .style('visibility', 'hidden')
+    .style('padding', '10px')
+    .style('background', 'rgba(0,0,0,0.6)')
+    .style('border-radius', '4px')
+    .style('color', '#fff')
+    .style('left', "0px")
+    .style('top', "0px")
+    .html(
+        `<h1>Ryan Gosling</h1>
+        <div>Amount of movies: 21</div>
+        <div>Average movie score: 7.13</div>`
+    )
+    .style('visibility', 'visible')
+    .style("left", "355px")
+    .style("top", "315px");
+
+const SamuelLJacksonTooltip = d3.select("#my_dataviz")
+    .append('div')
+    .attr('class', 'd3-tooltip')
+    .style('position', 'absolute')
+    .style('z-index', '10')
+    .style('visibility', 'hidden')
+    .style('padding', '10px')
+    .style('background', 'rgba(0,0,0,0.6)')
+    .style('border-radius', '4px')
+    .style('color', '#fff')
+    .style('left', "0px")
+    .style('top', "0px")
+    .html(
+        `<h1>Samuel L. Jackson</h1>
+        <div>Amount of movies: 48</div>
+        <div>Average movie score: 6.61</div>`
+    )
+    .style('visibility', 'visible')
+    .style("left", "760px")
+    .style("top", "360px");
 
 // Create the SVG for scatter plot
 const graph = d3.select("#my_dataviz")
@@ -863,14 +907,34 @@ graph.selectAll("circle")
     .append("circle")
     .attr("cx", d => xScale(d.movies_count))
     .attr("cy", d => yScale(d.mean_score))
-    .attr("r", 4)
-    .attr("fill", staticColor)
+    .attr("r", (d) => { 
+        if (d.artist === "Ryan Gosling") {
+            return 6;
+        } else if (d.artist === "Samuel L. Jackson") {
+            return 6;
+        }
+        return 4;
+    })
+    .attr("fill", (d) => {
+        if (d.artist === "Ryan Gosling") {
+            return "#FF0000";
+        } else if (d.artist === "Samuel L. Jackson") {
+            return "#FF0000";
+        }
+        return staticColor;
+    })
     .on('mouseover', function (d, i) {
+        if (showingExamples) {
+            ryanGoslingTooltip.html(``).style('visibility', 'hidden');
+            SamuelLJacksonTooltip.html(``).style('visibility', 'hidden');
+            graph.selectAll("circle").transition().attr('fill', staticColor).attr("r", 4);
+            showingExamples = false;
+        }
         tooltip
             .html(
                 `<h1>${i.artist}</h1>
-              <div>Amount of movies: ${i.movies_count}</div>
-              <div>Average movie score: ${i.mean_score.toFixed(2)}</div>`
+                  <div>Amount of movies: ${i.movies_count}</div>
+                  <div>Average movie score: ${i.mean_score.toFixed(2)}</div>`
             )
             .style('visibility', 'visible');
         d3.select(this).transition().attr('fill', hoverColor).attr("r", 6);
@@ -918,11 +982,17 @@ graph.append("text")
     .text("Average Movie Score");
 
 function filterData() {
+    if (showingExamples) {
+        ryanGoslingTooltip.html(``).style('visibility', 'hidden');
+        SamuelLJacksonTooltip.html(``).style('visibility', 'hidden');
+        graph.selectAll("circle").attr('fill', staticColor).attr("r", 4);
+        showingExamples = false;
+    }
     let data = actordata
     if (!actorSelected) {
         data = directordata;
     }
-    let filteredData =  data.filter(d => d.last_year_active >= currentYear);
+    let filteredData = data.filter(d => d.last_year_active >= currentYear);
     filteredData = filteredData.filter(d => d.mean_score >= currentMinScore);
     filteredData = filteredData.filter(d => d.movies_count >= currentMinCount);
     let finalData = filteredData.filter(d => d.artist.toLowerCase().includes(currentSearch.toLowerCase()));

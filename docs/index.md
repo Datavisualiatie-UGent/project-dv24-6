@@ -3,11 +3,13 @@ toc: false
 theme: default
 ---
 <div style="display: flex; 
-            flex-direction: column; 
+            flex-direction: row; 
             padding: 10px;
+            justify-content: center;
             text-align: center;
             align-items: center; height: 5%;">
-<h1>IMDB Top 5000 Movies</h1>
+<img src="IMDB_Logo_2016.svg.png" width="100px" style="padding-right: 10px">
+<h1> Top 5000 Movies</h1>
 </div>
 
 <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 95%; width: 100%">

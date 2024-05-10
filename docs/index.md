@@ -1036,9 +1036,20 @@ let groupedData;
 let maxMovies;
 let totalGrossData;
 let groupedByGenre;
-const color = d3.scaleOrdinal([...new Set(movies.map(d => d.main_genre))], d3.schemeSet3);
+const color = d3.scaleOrdinal([...new Set(movies.map(d => d.main_genre))].sort(), d3.schemeSet3);
 const groupData = by => {
-    groupedData = d3.group(movies, d => d.main_genre, d => d[by]);
+    let newMovies = [];
+    for (let movie of movies) {
+        let group = movie[by];
+        if (group.startsWith('Directors:')) group = group.split('Directors:')[1];
+        group = group.split(', '); 
+        for (let person of group) {
+            const newMovie = JSON.parse(JSON.stringify(movie));
+            newMovie[by] = person.trim();
+            newMovies.push(newMovie);
+        }
+    }
+    groupedData = d3.group(newMovies, d => d.main_genre, d => d[by]);
     totalGrossData = [];
     maxMovies = 0;
     groupedData.forEach((directors, mainGenre) => {
@@ -1084,7 +1095,7 @@ const buildTreemap = leaves => {
         }
         const data = clickedRect._groups[0][0].__data__.data;
         treemapTool.html(`<h1>${data.mainGenre}</h1>
-        <div>${actorSelected ? 'Actor(s)' : 'Director(s)'}: ${data.director}</div>
+        <div>${actorSelected ? 'Actor' : 'Director'}: ${data.director}</div>
         <div>Average Income Per Movie: $${data.averageGross}M</div>
         <div>Movies Made In Genre: ${data.moviesMade}</div>`).style('visibility', 'visible');
     }).on('mousemove', function (evt, d) {

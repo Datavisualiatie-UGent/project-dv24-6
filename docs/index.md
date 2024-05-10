@@ -1352,7 +1352,7 @@ directorButton.on("click", function () {
 });
 ```
 
-<br>
+<br><br>
 <div style="position: relative; display: flex; flex-direction: row;">
     <h2>Most successful</h2>
     <button id="treeDirector" style="margin-left: 10px;
@@ -1377,6 +1377,26 @@ directorButton.on("click", function () {
                     background-color: #437c90">Actor</button>
     <h2 style="margin-left: 10px;">per movie genre</h2>
 </div>
+<br>
+<i style="font-size: 20px; margin-top: 5px; width: 1000px">
+Finally, it also makes sense to review the best performing directors and actors categorized by movie genre.
+By using a treemap we visualize exactly this such that the best performing directors and actors, based on their average revenue
+per movie, can quickly be spotted.
+</i>
+<br>
+<i style="font-size: 20px; margin-top: 5px; width: 1000px">
+With this information we hope to provide a good insight into which actors and directors seem promising choices for
+a desired movie genre. By filtering on the amount of movies a director or actor has made, a more stable decision
+can be made: it will show those actors and directors that perform well on average even after making more movies.
+This gets rid of outliers that have directed or played in only one very good performing movie.
+</i>
+<br>
+<i style="font-size: 20px; margin-top: 5px; width: 1000px">
+As an example, this plot quickly makes clear that action and animation are genres that could be good choices for
+a movie studio: the best performing directors and actors can be found in these categories and thus most money
+can probably be made in these genres, given that one of the better actors in the genre is chosen.
+</i>
+<br>
 <div>${legend}</div>
 <div id="sliderDiv">
   <label for="slider">Minimum <span id="lspan">Director</span> Movie Count In Genre:</label>

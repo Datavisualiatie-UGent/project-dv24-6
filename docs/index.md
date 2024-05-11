@@ -344,6 +344,18 @@ function transissionToSelectMovies(filteredData) {
 
 <br>
 <h2>Average gross income per year and per genre</h2>
+<br>
+<i style="font-size: 20px; width: 1000px">
+When creating a movie, a specific genre is chosen to set the overall theme. 
+Choosing a genre is equally crucial as choosing a director or an actor, as there is always a genre that is more prominent than others.
+In order to understand this, we created a graph that determined the average box office score for every genre each year
+</i>
+<br>
+<i style="font-size: 20px; width: 1000px">
+We see that there were three main genres that were dominant in the most recent data we have, 2021. 
+These consist of action, adventure, and animation.
+</i>
+<br>
 <div style="display: flex; flex-direction: row; margin-top: 10px;">
     <label style="margin-right: 10px" for="yearSelect" >Select year:</label>
     <input type="range" id="yearSelect" min="0" max="10" step="0.1" value="0" style="width: 500px">
@@ -458,7 +470,7 @@ function updateChart(year) {
         .call(d3.axisLeft(y));
 }
 
-let currentYear = sorted[0].year;
+let currentYear = sorted[sorted.length - 1].year;
 
 // Slider for the range of activity
 const YearText = d3.select("#yearText")
@@ -467,7 +479,7 @@ const YearText = d3.select("#yearText")
 const Yearslider = d3.select("#yearSelect")
     .attr("min", sorted[0].year)
     .attr("max", sorted[sorted.length - 1].year)
-    .attr("value", sorted[0].year)
+    .attr("value", sorted[sorted.length - 1].year)
     .attr("step", 1)
     .on("input", function () {
         currentYear = this.value;

@@ -15,10 +15,10 @@ theme: default
 <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 95%; width: 100%">
 
 <i style="font-size: 20px; width: 1000px">
-Every big movie studio wants to make a great movie that creates a lot of revenue, but where to start. There are a lot
-of options to choose from. Which genre creates the most money. Which actor attracts people to the cinema.
+Every big movie studio wants to make a great movie that creates a lot of revenue. But where do you start? There are a lot
+of options to choose from. Which genre creates the most money? Which actor attracts people to the cinema?
 We did a study on the dataset of IMDB's Top 5000 movies to create a clear conclusion. We hope this helps your studio
-for making a good and profitable movie.
+with  making a good and profitable movie.
 </i>
 
 
@@ -30,7 +30,7 @@ const movies = FileAttachment("movies.csv").csv({typed: true});
 <br>
 <div style="position: relative; display: flex; flex-direction: row;">
     <h2>Gross income vs score in:</h2>
-<select id="GrossGenreSelect" style="margin-left: 10px;
+    <select id="GrossGenreSelect" style="margin-left: 10px;
                     margin-right: 3px; 
                     padding-left: 15px;
                     padding-right: 15px;
@@ -40,7 +40,33 @@ const movies = FileAttachment("movies.csv").csv({typed: true});
                     border-radius: 20px;
                     "></select>
 </div>
-<div id="incomescore" style="position: relative; display: flex; flex-direction: column">
+<br>
+
+<i style="font-size: 20px; width: 1000px">
+You are probably not here because you want to make the perfect movie, a true masterpiece. 
+You are probably here to simply earn a lot of money. It seems intuitive that these are correlated, 
+but this is not necessarily the case! It could even be the case that mediocre cash-grabs make the most money!
+So, before you start thinking about the artistic side of your movie, let's actually inspect this correlation.</i>
+<br>
+<i style="font-size: 20px; width: 1000px">
+To inspect this correlation, we have provided a simple scatter plot that compares the total gross income
+of each movie to its score on IMDB. One can simply notice that such correlation does indeed exist: the higher 
+the gross income, the higher the lowest score. However, this lower bound on the score seems to be pretty
+lenient: you do not need a score of at least 8 to make a lot of money. A score of 7 still has the potential to give a giant boost to your wallet.
+Also notice that there is no such correlation between the income and the highest score.
+So just because a movie is a masterpiece, does not mean that it will make you rich.
+ </i>
+<br>
+<i style="font-size: 20px; width: 1000px">
+When looking at the data points that represent movies that were a massive financial success, you'll find some of the most famous movies ever made. There is not a single person who hasn't heard of Star Wars, Spider-Man, Avengers or Avatar. </i>
+<br>
+<i style="font-size: 20px; width: 1000px">
+The scatter plot features a broad range of movies, but you can explore specific names by using the search bar. 
+If you want to focus on more recent activity, you can filter by the time period in which they came out. This might be helpful, since it follows from logical reasoning that older movies made less money.
+Finally, you can also select a specific genre to focus on at the title of this section. As you may see, certain genres (such as Animation) differ greatly from the general scatter plot.
+</i>
+<br>
+<div id="incomescore" style="position: relative; display: flex; flex-direction: column; width: 1000px">
     <label for="name">Search Movie:</label>
     <input type="text" id="name" style="border-radius: 10px; padding: 7px">
     <div style="display: flex; flex-direction: row; margin-top: 10px;">
@@ -103,6 +129,7 @@ var GrosscurrentYear = GrossEarliestYear;
 var GrosscurrentSearch = "";
 var GrosscurrentGenre = "All Movies";
 
+var showingExamplesGross = true;
 const width = 900;
 const height = 800;
 const staticColor = '#437c90';
@@ -120,7 +147,7 @@ select.selectAll("option")
     .text(d => d);
 
 // Add the tooltip
-const tooltip = d3.select("#incomescore")
+const tooltipGross = d3.select("#incomescore")
     .append('div')
     .attr('class', 'd3-tooltip')
     .style('position', 'absolute')
@@ -134,7 +161,47 @@ const tooltip = d3.select("#incomescore")
     .style('top', "0px")
     .text('a simple tooltip');
 
+const AvatarTooltip = d3.select("#incomescore")
+    .append('div')
+    .attr('class', 'd3-tooltip')
+    .style('position', 'absolute')
+    .style('z-index', '10')
+    .style('visibility', 'hidden')
+    .style('padding', '10px')
+    .style('background', 'rgba(0,0,0,0.6)')
+    .style('border-radius', '4px')
+    .style('color', '#fff')
+    .style('left', "0px")
+    .style('top', "0px")
+    .html(
+        `<h1>Avatar</h1>
+              <div>Score of movie: 7.8</div>
+              <div>Income of movie: $760.51M</div>`
+    )
+    .style('visibility', 'visible')
+    .style("left", "705px")
+    .style("top", "215px");
 
+const EmojiTooltip = d3.select("#incomescore")
+    .append('div')
+    .attr('class', 'd3-tooltip')
+    .style('position', 'absolute')
+    .style('z-index', '10')
+    .style('visibility', 'hidden')
+    .style('padding', '10px')
+    .style('background', 'rgba(0,0,0,0.6)')
+    .style('border-radius', '4px')
+    .style('color', '#fff')
+    .style('left', "0px")
+    .style('top', "0px")
+    .html(
+        `<h1>The Emoji Movie</h1>
+              <div>Score of movie: 3.3</div>
+              <div>Income of movie: $86.09M</div>`
+    )
+    .style('visibility', 'visible')
+    .style("left", "130px")
+    .style("top", "545px");
 
 // Create the SVG for scatter plot
 const graph = d3.select("#incomescore")
@@ -145,6 +212,12 @@ const graph = d3.select("#incomescore")
       .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif; position: relative")
 
 function GrossFilter() {
+    if (showingExamplesGross) {
+            AvatarTooltip.html(``).style('visibility', 'hidden');
+            EmojiTooltip.html(``).style('visibility', 'hidden');
+            graph.selectAll("path").filter(d=>d!=null&&(d.movie=='Avatar' || d.movie=='The Emoji Movie')).attr('fill', hoverColor);
+            showingExamplesGross = false;
+        }
     let filteredData = moviedata.filter(d=>d.Year >= GrosscurrentYear);
     if(GrosscurrentGenre != "All Movies"){
         filteredData = filteredData.filter(d=>d.genres.includes(GrosscurrentGenre));
@@ -221,10 +294,23 @@ graph.selectAll("path")
 .data(moviedata)
 .enter()
 .append("path")
-.attr("d", d => createStarPath(xScale(d.income), yScale(d.score), 0.5))
-.attr("fill", hoverColor)
-.on('mouseover', function (d, i) {
-          tooltip
+.attr("d", (d) => createStarPath(xScale(d.income), yScale(d.score), 0.5)
+    )
+    .attr("fill", (d) => {
+        if (d.movie === "The Emoji Movie") {
+            return "#FF0000";
+        } else if (d.movie === "Avatar") {
+            return "#FF0000";
+        }
+        return hoverColor;
+    }).on('mouseover', function (d, i) {
+        if (showingExamplesGross) {
+            AvatarTooltip.html(``).style('visibility', 'hidden');
+            EmojiTooltip.html(``).style('visibility', 'hidden');
+            graph.selectAll("path").filter(d=>d!=null&&(d.movie=='Avatar' || d.movie=='The Emoji Movie')).attr('fill', hoverColor);
+            showingExamplesGross = false;
+        }
+          tooltipGross
             .html(
               `<h1>${i.movie}</h1>
               <div>Score of movie: ${i.score}</div>
@@ -238,12 +324,12 @@ graph.selectAll("path")
     .on('mousemove', function (evt, d) {
         const mx = evt["layerX"];
         const my = evt["layerY"];
-        tooltip
-            .style("left", (mx + 15) + "px") 
-            .style("top", (my + 15) + "px")
+        tooltipGross
+            .style("left", (mx + 10) + "px") 
+            .style("top", (my + 30) + "px")
     })
 .on('mouseout', function () {
-  tooltip.html(``).style('visibility', 'hidden');
+  tooltipGross.html(``).style('visibility', 'hidden');
   d3.select(this).transition().attr('fill', hoverColor)
      .attr("d", d => createStarPath(xScale(d.income), yScale(d.score),0.5));
 });
@@ -318,7 +404,7 @@ function transissionToSelectMovies(filteredData) {
     
     path = graph.selectAll("path"); // Re-select all circles after updating
     path.filter(d=>d!==null).on('mouseover', function (d, i) {
-        tooltip
+        tooltipGross
             .html(
               `<h1>${i.movie}</h1>
               <div>Score of movie: ${i.score}</div>
@@ -330,12 +416,12 @@ function transissionToSelectMovies(filteredData) {
     .on('mousemove', function (evt, d) {
         const mx = evt["layerX"];
         const my = evt["layerY"];
-        tooltip
-            .style("left", (mx + 15) + "px") 
-            .style("top", (my + 15) + "px")
+        tooltipGross
+            .style("left", (mx + 10) + "px") 
+            .style("top", (my + 30) + "px")
     })
     .on('mouseout', function () {
-        tooltip.html(``).style('visibility', 'hidden');
+        tooltipGross.html(``).style('visibility', 'hidden');
         d3.select(this).transition().attr('fill', hoverColor).attr("d", d => createStarPath(xScale(d.income), yScale(d.score),0.5))
     });
 
@@ -354,7 +440,7 @@ In order to understand this, we created a graph that determined the average box 
 <i style="font-size: 20px; width: 1000px">
 We see that there were three main genres that were dominant in the most recent data we have, 2021. 
 These consist of action, adventure, and animation. If we look back between 2011 and 2021, we see that animation is one of the most popular genres.
-Except in 2017 were horror movies took the operhand. This is due to the great success of Jordan Peele's film Get Out
+Except in 2017, where horror movies took the upper hand. This is due to the great success of Jordan Peele's film Get Out
 </i>
 <br>
 <div style="display: flex; flex-direction: row; margin-top: 10px;">
@@ -694,7 +780,7 @@ possibly because they were lucky to be in a few well-received films or because t
 <br>
 <i style="font-size: 20px; width: 1000px">
 When looking at the data points that represents actors or directors with higher movie counts, 
-you'll find some of the most famous names in the industry. Actors like Samual L. Jackson, Brad Pitt and Ryan Gosling and
+you'll find some of the most famous names in the industry: actors like Samual L. Jackson, Brad Pitt and Ryan Gosling and
 directors like Steven Spielberg and Christopher Nolan.
 </i>
 <br>

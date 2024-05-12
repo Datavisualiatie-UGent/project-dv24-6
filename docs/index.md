@@ -353,7 +353,8 @@ In order to understand this, we created a graph that determined the average box 
 <br>
 <i style="font-size: 20px; width: 1000px">
 We see that there were three main genres that were dominant in the most recent data we have, 2021. 
-These consist of action, adventure, and animation.
+These consist of action, adventure, and animation. If we look back between 2011 and 2021, we see that animation is one of the most popular genres.
+Except in 2017 were horror movies took the operhand. This is due to the great success of Jordan Peele's film Get Out
 </i>
 <br>
 <div style="display: flex; flex-direction: row; margin-top: 10px;">
@@ -470,7 +471,7 @@ function updateChart(year) {
         .call(d3.axisLeft(y));
 }
 
-let currentYear = sorted[sorted.length - 1].year;
+let currentYear = "2017";
 
 // Slider for the range of activity
 const YearText = d3.select("#yearText")
@@ -479,7 +480,7 @@ const YearText = d3.select("#yearText")
 const Yearslider = d3.select("#yearSelect")
     .attr("min", sorted[0].year)
     .attr("max", sorted[sorted.length - 1].year)
-    .attr("value", sorted[sorted.length - 1].year)
+    .attr("value", 2017)
     .attr("step", 1)
     .on("input", function () {
         currentYear = this.value;

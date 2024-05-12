@@ -364,10 +364,6 @@ If we exclude this exception, we can see that animation is the most profitable g
     <label id="yearText"></label>
 </div>
 <div id="line-plot"></div>
-<br>
-<i style="font-size: 20px; width: 1000px">
-The graph below can be used to answer the question of why the animation genre jumps out.
-</i>
 
 ```js
 // Prepare data
@@ -499,7 +495,45 @@ updateChart(currentYear);
 
 <br>
 <h2>Average box-office per rating</h2>
+<br>
+<i style="font-size: 20px; width: 1000px">
+The popularity of the animation genre can be explicated by examining this graph. 
+We've analyzed every censor rating alongside its average box office performance, encompassing all the movies in our dataset. 
+Utilizing boxplots, we've depicted a spectrum of average box office per censor rating, 
+showcasing their minimum, maximum, median, and quantiles to offer a comprehensive and illustrative insight.
+</i>
+<br>
+<i style="font-size: 20px; width: 1000px">
+It's evident that films rated 12+, UA 7+, and U/A excel in the box office. 
+This aligns with the animation genre, as such movies are primarily tailored for children and teens, drawing numerous family outings to the cinema.
+</i>
+
+<br>
+<div class="legend" style="font-size: 20px; width: 1000px">
+<h3>Legend:</h3>
+<ul>
+  <li><strong>A</strong>: Adults Only</li>
+  <li><strong>M/PG</strong>: Mature/Parental Guidance Suggested</li>
+  <li><strong>18</strong>: Suitable for 18 years and above</li>
+  <li><strong>NC-17</strong>: No One 17 and Under Admitted</li>
+  <li><strong>R</strong>: Restricted</li>
+  <li><strong>UA 16+</strong>: Unrestricted Public Exhibition - but with Parental Guidance suggested for children below 16 years</li>
+  <li><strong>16</strong>: Suitable for 16 years and above</li>
+  <li><strong>15+</strong>: Suitable for 15 years and above</li>
+  <li><strong>UA 13+</strong>: Unrestricted Public Exhibition - but with Parental Guidance suggested for children below 13 years</li>
+  <li><strong>13</strong>: Suitable for 13 years and above</li>
+  <li><strong>12+</strong>: Suitable for 12 years and above</li>
+  <li><strong>UA</strong>: Unrestricted Public Exhibition - but with Parental Guidance suggested</li>
+  <li><strong>UA 7+</strong>: Unrestricted Public Exhibition - but with Parental Guidance suggested for children below 7 years</li>
+  <li><strong>7</strong>: Suitable for 7 years and above</li>
+  <li><strong>PG-13</strong>: Parents Strongly Cautioned (13 and above)</li>
+  <li><strong>PG</strong>: Parental Guidance Suggested</li>
+  <li><strong>U/A</strong>: Universal/Adult Accompaniment</li>
+</ul>
+</div>
+<i style="font-size: 20px; width: 1000px">
 For censor ratings "12" and "18+" the box-office is unknown. The box-office is in million dollars.
+</i>
 <div id="boxplots"></div>
 
 ```js

@@ -354,7 +354,8 @@ In order to understand this, we created a graph that determined the average box 
 <i style="font-size: 20px; width: 1000px">
 We see that there were three main genres that were dominant in the most recent data we have, 2021. 
 These consist of action, adventure, and animation. If we look back between 2011 and 2021, we see that animation is one of the most popular genres.
-Except in 2017 were horror movies took the operhand. This is due to the great success of Jordan Peele's film Get Out
+Except in 2017 were horror movies took the operhand. This is due to the great success of Jordan Peele's film Get Out and David F. Sandberg's Annabelle: Creation.
+If we exclude this exception, we can see that animation is the most profitable genre.
 </i>
 <br>
 <div style="display: flex; flex-direction: row; margin-top: 10px;">
@@ -363,6 +364,10 @@ Except in 2017 were horror movies took the operhand. This is due to the great su
     <label id="yearText"></label>
 </div>
 <div id="line-plot"></div>
+<br>
+<i style="font-size: 20px; width: 1000px">
+The graph below can be used to answer the question of why the animation genre jumps out.
+</i>
 
 ```js
 // Prepare data

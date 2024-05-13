@@ -9,7 +9,7 @@ theme: default
             text-align: center;
             align-items: center; height: 5%;">
 <img src="IMDB_Logo_2016.svg.png" width="100px" style="padding-right: 10px">
-<h1> Top 5000 Movies</h1>
+<h1> Top 5000+ Movies</h1>
 </div>
 
 <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 95%; width: 100%">
@@ -1557,4 +1557,10 @@ can probably be made in these genres, given that one of the better actors in the
   <span id="value">1</span>
 </div>
 <div id="treemap">${treemap}</div>
+
+<br>
+<i>These visualisations were made possible with the </i>
+<a href="https://www.kaggle.com/datasets/rakkesharv/imdb-5000-movies-multiple-genres-dataset/data">IMDb 5000+ Movies & Multiple Genres Dataset</a>
 </div>
+
+

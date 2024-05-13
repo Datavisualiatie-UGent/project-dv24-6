@@ -623,8 +623,7 @@ This aligns with the animation genre, as such movies are primarily tailored for 
       <li><strong>For All Ages</strong>: Suitable for all ages</li>
     </ul>
   </div>
-</div>
-
+<br>
 <div id="boxplots"></div>
 
 ```js

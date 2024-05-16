@@ -1,6 +1,6 @@
 ---
 toc: false
-theme: default
+theme: midnight
 ---
 <div style="display: flex; 
             flex-direction: row; 
@@ -906,6 +906,7 @@ const tooltip = d3.select("#my_dataviz")
     .style('top', "0px")
     .text('a simple tooltip');
 
+// Custom tooltips for Ryan Gosling and Samuel L. Jackson
 const ryanGoslingTooltip = d3.select("#my_dataviz")
     .append('div')
     .attr('class', 'd3-tooltip')
@@ -1124,6 +1125,7 @@ graph.append("text")
     .text("Average Movie Score");
 
 function filterData() {
+    // Filters data based of the current search, year, minimum score and minimum count
     if (showingExamples) {
         ryanGoslingTooltip.html(``).style('visibility', 'hidden');
         SamuelLJacksonTooltip.html(``).style('visibility', 'hidden');
@@ -1145,6 +1147,7 @@ function filterData() {
 }
 
 function transissionToOtherData(filteredData) {
+    // This function updates the graph with the new data
     const xScale = d3.scaleLinear()
         .domain([d3.min(filteredData, d => d.movies_count), d3.max(filteredData, d => d.movies_count)])
         .range([padding.left, width - padding.right]);
